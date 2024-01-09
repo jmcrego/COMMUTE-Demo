@@ -36,8 +36,7 @@ def blob2samples(audio_blob):
     # Extract raw audio data as bytes
     raw_audio_data = audio_segment.raw_data
     # Convert raw audio data to a float32 list
-    audio_samples = np.frombuffer(raw_audio_data, dtype=np.int32).astype(np.float32) / np.iinfo(np.int32).max
-    #audio_samples = np.frombuffer(raw_audio_data, dtype=np.int16).astype(np.float32) / np.iinfo(np.int16).max
+    audio_samples = np.frombuffer(raw_audio_data, dtype=np.int16).astype(np.float32) / np.iinfo(np.int16).max
     return audio_samples
 
 
