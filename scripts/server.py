@@ -28,15 +28,16 @@ def blob2samples(audio_blob):
     logging.info('Channels: {}'.format(audio_segment.channels));
     logging.info('Frame rate: {} Hz'.format(audio_segment.frame_rate));
     logging.info('Sample width: {} bytes'.format(audio_segment.sample_width));
-    logging.info('Frame count: {}'.format(audio_segment.frame_count));
+    #logging.info('Frame count: {}'.format(audio_segment.frame_count));
     #logging.info('Duration: {} ms'.format(audio_segment.duration));
     #logging.info('Frame width: {} bytes'.format(audio_segment.frame_width));
     # Exporting to a different format
-    audio_segment.export('output.mp3', format='mp3')
+    #audio_segment.export('output.mp3', format='mp3')
     # Extract raw audio data as bytes
     raw_audio_data = audio_segment.raw_data
     # Convert raw audio data to a float32 list
-    audio_samples = np.frombuffer(raw_audio_data, dtype=np.int16).astype(np.float32) / np.iinfo(np.int16).max
+    audio_samples = np.frombuffer(raw_audio_data, dtype=np.int32).astype(np.float32) / np.iinfo(np.int32).max
+    #audio_samples = np.frombuffer(raw_audio_data, dtype=np.int16).astype(np.float32) / np.iinfo(np.int16).max
     return audio_samples
 
 
@@ -51,9 +52,6 @@ def blob2samples2(audio_file):
     # Convert binary data to numpy array of float32 values
     audio_samples = np.frombuffer(audio_content[:buffer_size], dtype=np.int16).astype(np.float32) / np.iinfo(np.int16).max
     logging.info("audio_samples.size = {}".format(audio_samples.size))
-    if audio_samples.size > 10000 and audio_samples.size < 15000:
-        logging.info('saving...')
-        audio_file.save('./audio.wav') # Save the audio_blob to the specified path
     return audio_samples
 
 def transcribe(audio_file, lang_src, beam_size=5, history=None, task='transcribe'):
