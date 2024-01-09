@@ -59,16 +59,13 @@ const serverRequest = async () => {
     return;
   }
   let address = 'http://' + document.getElementById('IP').value + ':' + document.getElementById('PORT').value + document.getElementById('ROUTE').value;
+  blob = audioRec.blob();
   const formData = new FormData();
   formData.append('lang_src', lang_src);
   formData.append('lang_tgt', lang_tgt);
-  //formData.append('length', audioRec.audioChunks.length);
-  //formData.append('audio', new Blob(audioRec.audioChunks, { type: 'audio/webm' }), 'audio.webm');
-  blob = audioRec.blob();
   formData.append('length', blob['length'])
   formData.append('audio', blob['audio'])
-
-  console.log(`audioChunks.length = ${blob['length']}`); //${audioRec.audioChunks.length}`);
+  console.log(`audioChunks.length = ${blob['length']}`); 
   const responsePromise = fetch(address, { method: "POST", body: formData /*, credentials: "same-origin", headers: {"Content-Type": "application/json"}*/ })
     .then(response => { if (!response.ok) { throw new Error('Network response was not ok'); } })
     .then(data => { if (data) { updateResults(data); } })

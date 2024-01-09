@@ -4,7 +4,7 @@ import pyonmttok
 import ctranslate2
 from faster_whisper import WhisperModel
 import numpy as np
-import soundfile as sf
+#import soundfile as sf
 import magic
 from pydub import AudioSegment
 from flask import Flask, request, jsonify
@@ -22,7 +22,17 @@ Tokenizer = pyonmttok.Tokenizer("aggressive", joiner_annotate=True, preserve_pla
 HOST = '0.0.0.0'
 PORT = 12345
 
-def blob2samples(audio_file):
+def blob2samples(audio_blob):
+    # Read the content of the blob and convert it to an AudioSegment
+    audio_segment = AudioSegment.from_file(audio_blob, format='webm')
+    # Extract raw audio data as bytes
+    raw_audio_data = audio_segment.raw_data
+    # Convert raw audio data to a float32 list
+    audio_samples = np.frombuffer(raw_audio_data, dtype=np.int16).astype(np.float32) / np.iinfo(np.int16).max
+    return audio_samples
+
+
+def blob2samples2(audio_file):
     # Read the content of the blob
     audio_content = audio_file.read()
     logging.info('audio_type: {}, audio_size (bytes): {}'.format(mime.from_buffer(audio_content), len(audio_content)))

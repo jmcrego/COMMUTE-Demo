@@ -45,7 +45,10 @@ var audioRecorder = {
         this.audioChunks = []; 
     },
     blob: function() { // blob with all chunks and number of chunks
-        return {'audio': this.audioChunks, 'length':this.audioChunks.length};
+        return {
+            'audio': new Blob(this.audioChunks, { type: mimetype }), 
+            'length':this.audioChunks.length
+        };
         /*
         return new Promise((resolve, reject) => {
             try {
@@ -62,13 +65,3 @@ var audioRecorder = {
         if (n > 0 && this.audioChunks.length >= n) { this.audioChunks = this.audioChunks.slice(n); }
     }
 };
-
-const blobToBase64 = blob => {
-    const reader = new FileReader();
-    reader.readAsDataURL(blob);
-    return new Promise(resolve => {
-        reader.onloadend = () => {
-            resolve(reader.result); 
-        };
-    }); 
-}
