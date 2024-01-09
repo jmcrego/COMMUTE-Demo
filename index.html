@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>COMMUTE - DEMO</title>
+    <link href="styles/app.css" rel="stylesheet" type="text/css">
+  </head>
+  <body>
+
+    <!--div class="wrapper"-->
+      <!--header-->
+        <h1><img src="pics/SYSTRAN.png" style="vertical-align:middle; height:60px;"> <img src="pics/LIUM.png" style="vertical-align:middle; height:70px;"> COMMUTE - DEMO</h1>
+        <br>
+        <br>
+      <!--/header-->
+      <!--section class="main-controls"-->
+        <!--canvas class="visualizer" height="40px"></canvas-->
+        <!--div id="buttons"-->
+        <center>
+          <button class="record" style="font-size: 22px; width: 100px; height: 50px;" id="recordButton" onclick="clickRecordButton()">Start</button> <!--🎙-->
+        </center>
+        <!--/div-->
+      <!--/section-->
+    <!--/div-->
+  
+    <!--span style="font-size: 48px; color: Dodgerblue;">
+    <i class="fa-solid fa-camera"></i>
+    </span-->
+
+    <table id="tableResults">
+      <tr>
+        <td>
+          <table>
+            <tr>
+              <td><h3>Transcription</h3></td>
+              <td id="transcript_pr" class="cellbutton" onclick="changeTranscription(this.id)">Predict</td>
+              <td id="transcript_fr" class="cellbutton" onclick="changeTranscription(this.id)">French</td>
+              <td id="transcript_en" class="cellbutton" onclick="changeTranscription(this.id)">English</td>
+              <td id="transcript_ar" class="cellbutton" onclick="changeTranscription(this.id)">Arabic</td>
+            </tr>
+          </table>
+        </td>
+        <td>
+          <table>
+            <tr>
+              <td><h3>Translation&nbsp;&nbsp;&nbsp;&nbsp;</h3></td>
+              <td style="color:transparent;">Predict</td>
+              <td id="translate_fr" class="cellbutton" onclick="changeTranslation(this.id)">French</td>
+              <td id="translate_en" class="cellbutton" onclick="changeTranslation(this.id)">English</td>
+              <td id="translate_ar" class="cellbutton" onclick="changeTranslation(this.id)">Arabic</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td class="cellcontent"><fr></fr> Ceci est mon exemple.</td>
+        <td class="cellcontent">This is my example.</td>
+      </tr>
+      <tr>
+        <td class="cellcontent"><en></en> This is my example.</td>
+        <td class="cellcontent">Ceci est mon exemple.</td>
+      </tr>
+      <tr>
+        <td class="cellcontent"><ar></ar> إن المكان يبدو رائعا</td>
+        <td class="cellcontent">Ceci est mon exemple.</td>
+      </tr>
+    </table>
+
+    <p id="result_transcription"></p>
+    <p id="result_translation"></p>
+
+
+
+
+
+    <label for="toggle">&nbsp;&nbsp;🛠&nbsp;&nbsp;</label>
+    <input type="checkbox" id="toggle">
+    <aside>
+      <h2>Projet COMMUTE - Rapid DGA</h2>
+      <table>
+        <tr>
+          <td  style="width: 440px;">
+            <img src="pics/commute.png" alt="Commute" style="width:400px;">
+          </td>
+          <td>
+            <p>Plateforme d’Assistance à la Communication Multilingue en ligne.</p>
+            <p>Le projet vise à intégrer la production de reconnaissance et traduction vocale dans un outil de communication en ligne, ce qui permet de créer une véritable plateforme de communication sans barrières. </p>
+            <p>Les transcriptions et traductions sont affichées en temps réel au fur et à mesure qu'elles sont décodées par la reconnaissance vocale. L'application affiche également la vidéo des participants à la communication.</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <img src="pics/diagramme.png" alt="Diagramme" style="width:400px;">
+          </td>
+          <td>
+            <p> ➠ Les clients tournent sur un navigateur web et transmettent des enregistrements audio au serveur à intervalles réguliers.</p>
+            <p> ➠ Le serveur attend les requêtes des clients (audio) et répond avec les transcriptions et traductions des signals reçus.</p>
+            <p>&nbsp;&nbsp;&nbsp; • Serveur ip: <input type="text" style="width:110px;" value="10.25.0.229" id="IP"> port: <input type="text" style="width:50px;" value="12345" id="PORT"> route: <input type="text" style="width:150px;" value="/pipeline_asr_mt" id="ROUTE"></p>
+            <p>&nbsp;&nbsp;&nbsp; • Taille des morceaux d'audio <input type="number" style="width:50px;" value="500" min="100" max="1000" id="chunk_ms"> milliseconds [100-1000].</p>
+            <p>&nbsp;&nbsp;&nbsp; • Requête au serveur tous les <input type="number" style="width:50px;" value="1000" min="100" max="2000" id="delay_ms"> millisecondes [100-10000].</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <img src="pics/schema.png" alt="Schema" style="width:400px;">
+          </td>
+          <td>
+            <p>Version pipeline (ASR + MT):</p>
+            <p> ➠ Module de transcription:</p>
+            <p> &nbsp;&nbsp;&nbsp; • Whisper (OpenAI), </p>
+            <p> &nbsp;&nbsp;&nbsp; • adapté aux langues: Ar, Fr, En. </p>
+            <p> ➠ Module de traduction:</p>            
+            <p> &nbsp;&nbsp;&nbsp; • Modèle SYSTRAN multilingue, </p>
+            <p> &nbsp;&nbsp;&nbsp; • adapté au style dialogue et aux paires de langues: Ar, Fr, En ➜ Ar, Fr, En. </p>
+          </td>
+        </tr>
+      </table>
+    </aside>
+
+    <script src="scripts/audio.js"></script>
+    <script src="scripts/app.js"></script>
+    <!--script src="scripts/visualize.js"></script-->
+
+  </body>
+</html>

@@ -1,0 +1,186 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/*
+html, body {
+  height: 100%;
+}
+*/
+
+body {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 1.0rem;
+  user-select: none;
+}
+
+.wrapper {
+  /*height: 100%;*/
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2 {
+  font-size: 2rem;
+  text-align: center;
+  font-weight: normal;
+  padding: 0.5rem 0 0 0;
+}
+
+.main-controls {
+  padding: 0.75rem 0;
+}
+
+canvas {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.content-div {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  border: 1px solid #ccc;
+  background-color: white;
+}
+
+.cellbutton{
+  text-align: center;
+  cursor: pointer;
+}
+
+.cellcontent{
+  text-align: left;
+  border-bottom: 1px solid #ccc;
+  border-top: 1px solid #ccc;
+  box-sizing: border-box;
+  padding: 10px;
+  background-color: white;
+  resize: vertical; 
+  width: 50%;
+}
+
+table {
+  width: 95%;
+  border-collapse: collapse;
+  margin: 5px auto; /* Center the table */
+}
+
+th, td {
+  border: 0px solid #ccc;
+  padding: 5px;
+  /*text-align: left;*/
+}
+
+#buttons {
+  display: flex;
+  flex-direction: row;
+  /*justify-content: space-between;*/
+  justify-content: center;
+}
+
+#buttons button {
+  font-size: 1rem;
+  padding: 0.1rem;
+  width: 100px; /*calc(50% - 0.25rem);*/
+  cursor: pointer;
+}
+
+button {
+  font-size: 1rem;
+  background: DarkBlue; /*#0088cc;*/
+  text-align: center;
+  color: white;
+  border: none;
+  transition: all 0.2s;
+  padding: 0.5rem;
+}
+
+button:hover { /*, button:focus {*/
+  box-shadow: inset 0px 0px 20px rgba(255, 255, 255, 255);
+  cursor: pointer;
+  /*background: #0ae;*/
+}
+
+section, article {
+  display: block;
+}
+
+fr::before {
+  font-family: 'Courier New', Courier, monospace;
+  background-color: LightBlue;
+  content: "fr";
+}
+en::before {
+  font-family: 'Courier New', Courier, monospace;
+  background-color: LightCoral;
+  content: "en";
+}
+ar::before {
+  font-family: 'Courier New', Courier, monospace;
+  background-color: LightGreen;
+  content: "ar";
+}
+xx::before {
+  font-family: 'Courier New', Courier, monospace;
+  background-color: LightGrey;
+  content: "xx";
+}
+
+/* Checkbox hack to control information box display */
+
+label {
+  font-size: 3rem;
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  z-index: 5;
+  cursor: pointer;
+  background-color: black;
+  border-radius: 10px;
+}
+
+input[type=checkbox] {
+   position: absolute;
+   top: -100px;
+}
+
+aside {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: translateX(100%);
+  transition: 0.3s all ease-out;
+  background-color: #efefef;
+  padding: 1rem;
+}
+
+aside p {
+  font-size: 1.2rem;
+  margin: 0.5rem 0;
+}
+
+aside a {
+  color: #666;
+}
+
+/* Toggled State of information box */
+input[type=checkbox]:checked ~ aside {
+  transform: translateX(0);
+}
+
+/* Adjustments for wider screens */
+@media all and (min-width: 800px) {
+  /* Don't take all the space as readability is lost when line length
+     goes past a certain size */
+  .wrapper {
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+}
