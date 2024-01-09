@@ -45,6 +45,8 @@ var audioRecorder = {
         this.audioChunks = []; 
     },
     blob: function() { // blob with all chunks and number of chunks
+        return {'audio': this.audioChunks, 'length':this.audioChunks.length};
+        /*
         return new Promise((resolve, reject) => {
             try {
                 let blob = new Blob(this.audioChunks, { mimeType: mimetype }); 
@@ -54,6 +56,7 @@ var audioRecorder = {
                 reject(error); 
             }
         });
+        */
     },    
     remove: function(n){ //remove initial n chunnks
         if (n > 0 && this.audioChunks.length >= n) { this.audioChunks = this.audioChunks.slice(n); }

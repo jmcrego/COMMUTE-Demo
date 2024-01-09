@@ -62,21 +62,17 @@ const serverRequest = async () => {
   const formData = new FormData();
   formData.append('lang_src', lang_src);
   formData.append('lang_tgt', lang_tgt);
-  formData.append('length', audioRec.audioChunks.length);
-  formData.append('audio', new Blob(audioRec.audioChunks, { type: 'audio/webm' }), 'audio.webm');
-  console.log(`audioChunks.length = ${audioRec.audioChunks.length}`);
+  //formData.append('length', audioRec.audioChunks.length);
+  //formData.append('audio', new Blob(audioRec.audioChunks, { type: 'audio/webm' }), 'audio.webm');
+  blob = audioRec.blob();
+  formData.append('length', blob['length'])
+  formData.append('audio', blob['audio'])
 
-  const responsePromise = fetch(address, { method: "POST", body: formData /*, credentials: "same-origin", headers: { "Content-Type": "application/json"}*/ })
-    .then(response => {
-      console.log('Response: ', response); 
-      if (!response.ok) {throw new Error('Network response was not ok');}
-    })
-    .then(data => {
-      if (data) { updateResults(data); }
-    })
-    .catch(error => {
-      console.error('Fetch error:', error);
-    });    
+  console.log(`audioChunks.length = ${blob['length']}`); //${audioRec.audioChunks.length}`);
+  const responsePromise = fetch(address, { method: "POST", body: formData /*, credentials: "same-origin", headers: {"Content-Type": "application/json"}*/ })
+    .then(response => { if (!response.ok) { throw new Error('Network response was not ok'); } })
+    .then(data => { if (data) { updateResults(data); } })
+    .catch(error => { console.error('Fetch error:', error); });    
 }
 
 function updateResults(data){
