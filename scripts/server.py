@@ -39,24 +39,10 @@ def blob2samples(audio_blob):
     audio_samples = np.frombuffer(raw_audio_data, dtype=np.int16).astype(np.float32) / np.iinfo(np.int16).max
     return audio_samples
 
-
-def blob2samples2(audio_file):
-    # Read the content of the blob
-    audio_content = audio_file.read()
-    logging.info('audio_type: {}, audio_size (bytes): {}'.format(mime.from_buffer(audio_content), len(audio_content)))
-    # Ensure buffer size is a multiple of element size
-    element_size = np.dtype(np.int16).itemsize
-    buffer_size = len(audio_content)
-    buffer_size -= buffer_size % element_size    
-    # Convert binary data to numpy array of float32 values
-    audio_samples = np.frombuffer(audio_content[:buffer_size], dtype=np.int16).astype(np.float32) / np.iinfo(np.int16).max
-    logging.info("audio_samples.size = {}".format(audio_samples.size))
-    return audio_samples
-
 def transcribe(audio_file, lang_src, beam_size=5, history=None, task='transcribe'):
     audio_samples = blob2samples(audio_file)
     language = None if lang_src == 'pr' else lang_src
-    segments, info = Transcriber.transcribe(audio_samples, language=language, task=task, beam_size=beam_size, vad_filter=True, word_timestamps=True, initial_prompt=history)
+    segments, info = Transcriber.transcribe(audio_file, language=language, task=task, beam_size=beam_size, vad_filter=True, word_timestamps=True, initial_prompt=history)
     transcription = []
     for segment in segments:
         for word in segment.words:
