@@ -25,12 +25,12 @@ PORT = 12345
 def blob2samples(audio_blob):
     # Read the content of the blob and convert it to an AudioSegment
     audio_segment = AudioSegment.from_file(audio_blob, format='webm')
-    if ('channels' in audio_segment) {logging.info(f'Channels: {audio_segment.channels}');}
-    if ('frame_rate' in audio_segment) {logging.info(f'Frame rate: {audio_segment.frame_rate} Hz');}
-    if ('sample_width' in audio_segment) {logging.info(f'Sample width: {audio_segment.sample_width} bytes');}
-    if ('frame_count' in audio_segment) {logging.info(f'Frame count: {audio_segment.frame_count}');}
-    if ('duration' in audio_segment) {logging.info(f'Duration: {audio_segment.duration} milliseconds');}
-    if ('frame_width' in audio_segment) {logging.info(f'Frame width: {audio_segment.frame_width} bytes');}
+    logging.info(f'Channels: {audio_segment?.channels}');
+    logging.info(f'Frame rate: {audio_segment?.frame_rate} Hz');
+    logging.info(f'Sample width: {audio_segment?.sample_width} bytes');
+    logging.info(f'Frame count: {audio_segment?.frame_count}');
+    logging.info(f'Duration: {audio_segment?.duration} milliseconds');
+    logging.info(f'Frame width: {audio_segment?.frame_width} bytes');
     # Exporting to a different format
     #audio_segment.export('output.mp3', format='mp3')
     # Extract raw audio data as bytes
