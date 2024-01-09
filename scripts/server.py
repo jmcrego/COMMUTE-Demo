@@ -32,7 +32,7 @@ def blob2samples(audio_blob):
     #logging.info('Duration: {} ms'.format(audio_segment.duration));
     #logging.info('Frame width: {} bytes'.format(audio_segment.frame_width));
     # Exporting to a different format
-    #audio_segment.export('output.mp3', format='mp3')
+    audio_segment.export('output.mp3', format='mp3')
     # Extract raw audio data as bytes
     raw_audio_data = audio_segment.raw_data
     # Convert raw audio data to a float32 list
