@@ -76,7 +76,8 @@ def transcribe(audio_file, lang_src, beam_size=5, history=None, task='transcribe
     return ' '.join(transcription), info.language
 
 def translate(transcription, lang_tgt):
-    if lang_tgt is None or len(transcription) == 0:
+    logging.info('translate({}, {})'.format(transcription, lang_tgt))
+    if lang_tgt is None: #$ or len(transcription) == 0:
         return ''
     translation = ''
     input_stream = "｟" + lang_tgt + "｠" + " " + transcription
