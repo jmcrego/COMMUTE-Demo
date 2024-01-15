@@ -3,7 +3,7 @@ import logging
 import pyonmttok
 import ctranslate2
 from faster_whisper import WhisperModel
-import io
+from io import BytesIO
 from werkzeug.datastructures import FileStorage
 import numpy as np
 #import soundfile as sf
