@@ -53,22 +53,21 @@ function clickRecordButton(){
 }
 
 const serverRequest = async () => {
-  console.log('serverRequest');
   if (audioRec.audioChunks.length == 0){
-    console.log('empty audioChunks');
     return;
   }
+  console.log('serverRequest');
   let address = 'http://' + document.getElementById('IP').value + ':' + document.getElementById('PORT').value + document.getElementById('ROUTE').value;
-  let audio_length = audioRec.get();
-  let audio = audio_length['audio']
-  let length = audio_length['length']
+  let daudio = audioRec.get();
+  const audio = daudio['audio'];
+  const blob = new Blob(audio, { type: 'audio/webm' });
   const formData = new FormData();
-  console.log(`audio.length = ${length}`);
+  //console.log(`audio.length = ${length}`);
   console.log(`audio = ${audio}`);
   formData.append('lang_src', lang_src);
   formData.append('lang_tgt', lang_tgt);
-  formData.append('audio', audio);
-  formData.append('length', length);
+  formData.append('audio', blob);
+  formData.append('length', audio.length);
   try {
     const response = await fetch(address, { method: 'POST', body: formData });    
     if (!response.ok) { console.error('Server returned an error:', response.statusText); return; }

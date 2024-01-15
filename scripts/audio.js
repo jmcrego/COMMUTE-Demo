@@ -22,7 +22,10 @@ var audioRecorder = {
                         const mediaRecorderOptions = { mimeType: mimetype, audioBitsPerSecond: 16000, audio: true, video: false };
                         this.mediaRecorder = new MediaRecorder(stream, mediaRecorderOptions); 
                         this.audioChunks = []; 
-                        this.mediaRecorder.addEventListener("dataavailable", event => { this.audioChunks.push(event.data); }); 
+                        this.mediaRecorder.addEventListener("dataavailable", event => { 
+                            this.audioChunks.push(event.data); 
+                            console.log('audioChunks.length = ',this.audioChunks.length)
+                        }); 
                         this.mediaRecorder.start(); 
                         this.intervalId = setInterval(() => this.mediaRecorder.requestData(), chunk_ms); 
                         resolve();
@@ -47,10 +50,8 @@ var audioRecorder = {
     },
     get: function() { // blob with list of chunks and number of chunks
         let curr_chunks = this.audioChunks.slice(this.firstChunk);
-        let curr_blob = new Blob(curr_chunks, { type: mimetype });
         return {
-            'audio': curr_blob, 
-            'length': curr_chunks.length //this.audioChunks.length
+            'audio': curr_chunks, //curr_blob, 
         };
     },    
     advance: function(n){ //advance firstChunk by n chunnks

@@ -97,7 +97,7 @@ def processRequest(input_data):
     length = request.form.get('length')
     logging.info('lang_src: {}, lang_tgt: {}, length: {}'.format(lang_src, lang_tgt, length))
     transcription, lang_src = transcribe(audio_blob, lang_src)
-    logging.info('transcription = [{}] {}'.format(lang_src, transcription))
+    logging.info('transcription = {}'.format([lang_src, transcription]))
     translation = translate(transcription, lang_tgt)
     logging.info('translation = {}'.format(translation))
     advance_n_chunks = endingSentence(transcription, length)
