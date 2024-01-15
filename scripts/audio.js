@@ -5,6 +5,7 @@ mimetype = 'audio/webm'
 var audioRecorder = {
     // Properties
     audioChunks: [],
+    firstChunk: 0,
     mediaRecorder: null,
     streamBeingCaptured: null,
     intervalId: 0,
@@ -18,7 +19,7 @@ var audioRecorder = {
                 navigator.mediaDevices.getUserMedia({ audio: true })
                     .then(stream => { 
                         this.streamBeingCaptured = stream; 
-                        const mediaRecorderOptions = { mimeType: mimetype, audioBitsPerSecond: 15000, audio: true, video: false };
+                        const mediaRecorderOptions = { mimeType: mimetype, audioBitsPerSecond: 16000, audio: true, video: false };
                         this.mediaRecorder = new MediaRecorder(stream, mediaRecorderOptions); 
                         this.audioChunks = []; 
                         this.mediaRecorder.addEventListener("dataavailable", event => { this.audioChunks.push(event.data); }); 
@@ -44,24 +45,18 @@ var audioRecorder = {
         }
         this.audioChunks = []; 
     },
-    blob: function() { // blob with all chunks and number of chunks
+    get: function() { // blob with list of chunks and number of chunks
+        let curr_chunks = this.audioChunks.slice(this.firstChunk);
+        let curr_blob = new Blob(curr_chunks, { type: mimetype });
         return {
-            'audio': new Blob(this.audioChunks, { type: mimetype }), 
-            'length':this.audioChunks.length
+            'audio': curr_blob, 
+            'length': curr_chunks.length //this.audioChunks.length
         };
-        /*
-        return new Promise((resolve, reject) => {
-            try {
-                let blob = new Blob(this.audioChunks, { mimeType: mimetype }); 
-                resolve({'blob': blob, 'length': this.audioChunks.length});
-            } 
-            catch (error) {
-                reject(error); 
-            }
-        });
-        */
     },    
-    remove: function(n){ //remove initial n chunnks
-        if (n > 0 && this.audioChunks.length >= n) { this.audioChunks = this.audioChunks.slice(n); }
+    advance: function(n){ //advance firstChunk by n chunnks
+        if (n > 0 && this.audioChunks.length >= n) { 
+            this.firstChunk += n; 
+            /*this.audioChunks.splice(n);*/ 
+        }
     }
 };
