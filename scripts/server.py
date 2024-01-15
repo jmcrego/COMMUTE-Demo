@@ -73,10 +73,9 @@ def transcribe(audio_file, lang_src, beam_size=5, history=None, task='transcribe
         for word in segment.words:
             transcription.append(word.word)
             logging.info("word\t{}\t{}\t{}".format(word.start,word.end,word.word))
-    return ''.join(transcription), info.language
+    return ''.join(transcription).strip(), info.language
 
 def translate(transcription, lang_tgt):
-    logging.info('translate({}, {})'.format(transcription, lang_tgt))
     if lang_tgt is None: #$ or len(transcription) == 0:
         return ''
     translation = ''
