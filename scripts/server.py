@@ -3,10 +3,6 @@ import logging
 import pyonmttok
 import ctranslate2
 from faster_whisper import WhisperModel
-#import wave
-#from io import BytesIO
-#from werkzeug.datastructures import FileStorage
-#import soundfile as sf
 import magic
 import numpy as np
 from pydub import AudioSegment
@@ -18,35 +14,12 @@ mime = magic.Magic()
 ct2 = '/nfs/RESEARCH/crego/projects/COMMUTE-Demo/checkpoints/checkpoint-50000.pt.ct2'
 bpe = '/nfs/RESEARCH/crego/projects/COMMUTE-Demo/config/bpe-ar-en-fr-50k'
 model_size = 'tiny'
-device = 'cpu' #cpu or cuda
+device = 'cuda' #cpu or cuda
 Transcriber = WhisperModel(model_size_or_path=model_size, device=device, compute_type='int8')
 Translator = ctranslate2.Translator(ct2, device=device)
 Tokenizer = pyonmttok.Tokenizer("aggressive", joiner_annotate=True, preserve_placeholders=True, bpe_model_path=bpe)
 HOST = '0.0.0.0'
 PORT = 12345
-
-'''
-def blob2io(audio_blob):
-    # Assuming file_storage is a FileStorage object representing the uploaded audio file # Replace this with your actual FileStorage object
-    file_storage = FileStorage()
-    # Read the bytes from the FileStorage object
-    audio_blob = file_storage.read()
-    # Convert audio blob to BinaryIO
-    audio_binary_io = BytesIO(audio_blob)
-    # Use the wave module to get audio properties
-    with wave.open(audio_binary_io, 'rb') as wave_file:
-        channels = wave_file.getnchannels()
-        frame_rate = wave_file.getframerate()
-        sample_width = wave_file.getsampwidth()
-        frames = wave_file.getnframes()
-        duration = frames / float(frame_rate)
-    logging.info('Channels: {}'.format(channels));
-    logging.info('Frame rate: {} Hz'.format(frame_rate));
-    logging.info('Sample width: {} bytes'.format(sample_width));
-    logging.info('Frames: {}'.format(frames));
-    logging.info('Duration: {}'.format(duration));
-    return audio_binary_io
-'''
 
 def describe(audio_blob):
     # Process the audio Blob with pydub
