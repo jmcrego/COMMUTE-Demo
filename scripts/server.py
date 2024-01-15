@@ -24,6 +24,7 @@ bpe = '/nfs/RESEARCH/crego/projects/COMMUTE-Demo/config/bpe-ar-en-fr-50k'
 Tokenizer = pyonmttok.Tokenizer("aggressive", joiner_annotate=True, preserve_placeholders=True, bpe_model_path=bpe)
 
 def describe(audio_blob):
+    # running this function changes the audio_blob and inutilizes it
     # Process the audio Blob with pydub
     audio_segment = AudioSegment.from_file(audio_blob)        
     logging.info('Channels: {}'.format(audio_segment.channels))
