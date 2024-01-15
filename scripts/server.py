@@ -22,6 +22,11 @@ Tokenizer = pyonmttok.Tokenizer("aggressive", joiner_annotate=True, preserve_pla
 HOST = '0.0.0.0'
 PORT = 12345
 
+def blob2io(audio_blob):
+    # Convert audio blob to BinaryIO
+    audio_binary_io = io.BytesIO(audio_blob)
+    return audio_binary_io
+
 def blob2samples(audio_blob):
     # Read the content of the blob and convert it to an AudioSegment
     audio_segment = AudioSegment.from_file(audio_blob, format='webm')
@@ -40,7 +45,8 @@ def blob2samples(audio_blob):
     return audio_samples
 
 def transcribe(audio_file, lang_src, beam_size=5, history=None, task='transcribe'):
-    audio_samples = blob2samples(audio_file)
+    #audio_samples = blob2samples(audio_file)
+    audio_samples = blob2io(audio_file)
     language = None if lang_src == 'pr' else lang_src
     segments, info = Transcriber.transcribe(audio_file, language=language, task=task, beam_size=beam_size, vad_filter=True, word_timestamps=True, initial_prompt=history)
     transcription = []

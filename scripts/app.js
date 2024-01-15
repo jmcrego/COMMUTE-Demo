@@ -63,8 +63,8 @@ const serverRequest = async () => {
   const formData = new FormData();
   formData.append('lang_src', lang_src);
   formData.append('lang_tgt', lang_tgt);
-  formData.append('length', blob['length'])
-  formData.append('audio', blob['audio'])
+  formData.append('audio', blob['audio']);
+  formData.append('length', blob['length']);
   console.log(`audioChunks.length = ${blob['length']}`); 
   const responsePromise = fetch(address, { method: "POST", body: formData /*, credentials: "same-origin", headers: {"Content-Type": "application/json"}*/ })
     .then(response => { if (!response.ok) { throw new Error('Network response was not ok'); } })
