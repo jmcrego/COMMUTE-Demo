@@ -88,6 +88,7 @@ function updateResults(data){
   firstCell.innerHTML = langTag(data.lang_src) + ' ' + data.transcription;
   secondCell.innerHTML = langTag(data.lang_tgt) + ' ' + data.translation;
   if (data.remove_n_chunks>0) { //end of sentence (add new row for the remaining requests) 
+    console.log(`removing ${data.remove_n_chunks} chunks`)
     audioRec.remove(data.remove_n_chunks);
     insertSecondRow()
   }
