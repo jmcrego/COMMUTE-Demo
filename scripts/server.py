@@ -3,6 +3,7 @@ import logging
 import pyonmttok
 import ctranslate2
 from faster_whisper import WhisperModel
+import wave
 from io import BytesIO
 from werkzeug.datastructures import FileStorage
 import numpy as np
