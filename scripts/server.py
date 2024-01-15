@@ -3,14 +3,13 @@ import logging
 import pyonmttok
 import ctranslate2
 from faster_whisper import WhisperModel
-#import magic
 import numpy as np
 from pydub import AudioSegment
 from flask import Flask, request, jsonify
 from flask_cors import CORS  # Import the CORS module
 
-#mime = magic.Magic()
 logging.basicConfig(format='[%(asctime)s.%(msecs)03d] %(levelname)s %(message)s', datefmt='%Y-%m-%d_%H:%M:%S', level=getattr(logging, 'INFO', None), filename=None)
+
 device = 'cuda' #cpu or cuda
 HOST = '0.0.0.0'
 PORT = 12345
