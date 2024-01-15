@@ -3,23 +3,26 @@ import logging
 import pyonmttok
 import ctranslate2
 from faster_whisper import WhisperModel
-import magic
+#import magic
 import numpy as np
 from pydub import AudioSegment
 from flask import Flask, request, jsonify
 from flask_cors import CORS  # Import the CORS module
 
+#mime = magic.Magic()
 logging.basicConfig(format='[%(asctime)s.%(msecs)03d] %(levelname)s %(message)s', datefmt='%Y-%m-%d_%H:%M:%S', level=getattr(logging, 'INFO', None), filename=None)
-mime = magic.Magic()
-ct2 = '/nfs/RESEARCH/crego/projects/COMMUTE-Demo/checkpoints/checkpoint-50000.pt.ct2'
-bpe = '/nfs/RESEARCH/crego/projects/COMMUTE-Demo/config/bpe-ar-en-fr-50k'
-model_size = 'tiny'
 device = 'cuda' #cpu or cuda
-Transcriber = WhisperModel(model_size_or_path=model_size, device=device, compute_type='int8')
-Translator = ctranslate2.Translator(ct2, device=device)
-Tokenizer = pyonmttok.Tokenizer("aggressive", joiner_annotate=True, preserve_placeholders=True, bpe_model_path=bpe)
 HOST = '0.0.0.0'
 PORT = 12345
+
+model_size = 'tiny'
+Transcriber = WhisperModel(model_size_or_path=model_size, device=device, compute_type='int8')
+
+ct2 = '/nfs/RESEARCH/crego/projects/COMMUTE-Demo/checkpoints/checkpoint-50000.pt.ct2'
+Translator = ctranslate2.Translator(ct2, device=device)
+
+bpe = '/nfs/RESEARCH/crego/projects/COMMUTE-Demo/config/bpe-ar-en-fr-50k'
+Tokenizer = pyonmttok.Tokenizer("aggressive", joiner_annotate=True, preserve_placeholders=True, bpe_model_path=bpe)
 
 def describe(audio_blob):
     # Process the audio Blob with pydub
