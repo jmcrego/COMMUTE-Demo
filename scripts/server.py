@@ -65,7 +65,7 @@ def blob2samples(audio_blob):
 
 def transcribe(audio_file, lang_src, beam_size=5, history=None, task='transcribe'):
     #audio_samples = blob2samples(audio_file)
-    audio_samples = blob2io(audio_file)
+    #audio_samples = blob2io(audio_file)
     language = None if lang_src == 'pr' else lang_src
     segments, info = Transcriber.transcribe(audio_file, language=language, task=task, beam_size=beam_size, vad_filter=True, word_timestamps=True, initial_prompt=history)
     transcription = []
