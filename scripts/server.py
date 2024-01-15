@@ -4,6 +4,7 @@ import pyonmttok
 import ctranslate2
 from faster_whisper import WhisperModel
 import io
+from werkzeug.datastructures import FileStorage
 import numpy as np
 #import soundfile as sf
 import magic
@@ -24,8 +25,16 @@ HOST = '0.0.0.0'
 PORT = 12345
 
 def blob2io(audio_blob):
+    # Assuming file_storage is a FileStorage object representing the uploaded audio file
+    # Replace this with your actual FileStorage object
+    file_storage = FileStorage()
+
+    # Read the bytes from the FileStorage object
+    audio_blob = file_storage.read()
+
     # Convert audio blob to BinaryIO
-    audio_binary_io = io.BytesIO(audio_blob)
+    audio_binary_io = BytesIO(audio_blob)
+
     return audio_binary_io
 
 def blob2samples(audio_blob):
