@@ -46,28 +46,24 @@ def blob2io(audio_blob):
     logging.info('Frames: {}'.format(frames));
     logging.info('Duration: {}'.format(duration));
     return audio_binary_io
-
-def blob2samples(audio_blob):
-    # Read the content of the blob and convert it to an AudioSegment
-    audio_segment = AudioSegment.from_file(audio_blob, format='webm')
-    logging.info('Channels: {}'.format(audio_segment.channels));
-    logging.info('Frame rate: {} Hz'.format(audio_segment.frame_rate));
-    logging.info('Sample width: {} bytes'.format(audio_segment.sample_width));
-    #logging.info('Frame count: {}'.format(audio_segment.frame_count));
-    #logging.info('Duration: {} ms'.format(audio_segment.duration));
-    #logging.info('Frame width: {} bytes'.format(audio_segment.frame_width));
-    # Exporting to a different format
-    #audio_segment.export('output.mp3', format='mp3')
-    # Extract raw audio data as bytes
-    raw_audio_data = audio_segment.raw_data
-    # Convert raw audio data to a float32 list
-    audio_samples = np.frombuffer(raw_audio_data, dtype=np.int16).astype(np.float32) / np.iinfo(np.int16).max
-    return audio_samples
 '''
 
+def describe(audio_blob):
+    # Process the audio Blob with pydub
+    audio_segment = AudioSegment.from_file(audio_blob)        
+    # Extract information about the audio file
+    channels = audio_segment.channels
+    frame_rate = audio_segment.frame_rate
+    sample_width = audio_segment.sample_width
+    duration_in_seconds = len(audio_segment) / 1000.0
+    # Print or use the extracted information
+    lopging.info('Channels: {}'.format(channels))
+    logging.info('Frame Rate: {}'.format(frame_rate))
+    logging.info('Sample Width {}'.format(sample_width))
+    logging.info('Duration (seconds): {}'.format(duration_in_seconds))
+
 def transcribe(audio_blob, lang_src, beam_size=5, history=None, task='transcribe'):
-    #audio_samples = blob2samples(audio_blob)
-    #audio_samples = blob2io(audio_blob)
+    describe(audio_blob)
     language = None if lang_src == 'pr' else lang_src
     segments, info = Transcriber.transcribe(audio_blob, language=language, task=task, beam_size=beam_size, vad_filter=True, word_timestamps=True, initial_prompt=history)
     transcription = []
@@ -78,7 +74,7 @@ def transcribe(audio_blob, lang_src, beam_size=5, history=None, task='transcribe
     return ''.join(transcription).strip(), info.language
 
 def translate(transcription, lang_tgt):
-    if lang_tgt is None: #$ or len(transcription) == 0:
+    if lang_tgt == '':
         return ''
     translation = ''
     input_stream = "｟" + lang_tgt + "｠" + " " + transcription
