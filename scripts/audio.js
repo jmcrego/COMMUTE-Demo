@@ -49,9 +49,10 @@ var audioRecorder = {
         this.audioChunks = []; 
     },
     get: function() { // blob with list of chunks and number of chunks
-        let curr_chunks = this.audioChunks.slice(this.firstChunk);
+        let lastChunk = this.audioChunks.length;
         return {
-            'audio': curr_chunks, //curr_blob, 
+            'blob': new Blob(this.audioChunks.slice(this.firstChunk, lastChunk), { type: 'audio/webm' }), 
+            'length': lastChunk - this.firstChunk
         };
     },    
     advance: function(n){ //advance firstChunk by n chunnks

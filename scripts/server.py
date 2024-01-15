@@ -3,12 +3,12 @@ import logging
 import pyonmttok
 import ctranslate2
 from faster_whisper import WhisperModel
-import wave
-from io import BytesIO
-from werkzeug.datastructures import FileStorage
-import numpy as np
+#import wave
+#from io import BytesIO
+#from werkzeug.datastructures import FileStorage
 #import soundfile as sf
 import magic
+import numpy as np
 from pydub import AudioSegment
 from flask import Flask, request, jsonify
 from flask_cors import CORS  # Import the CORS module
@@ -51,16 +51,10 @@ def blob2io(audio_blob):
 def describe(audio_blob):
     # Process the audio Blob with pydub
     audio_segment = AudioSegment.from_file(audio_blob)        
-    # Extract information about the audio file
-    channels = audio_segment.channels
-    frame_rate = audio_segment.frame_rate
-    sample_width = audio_segment.sample_width
-    duration_in_seconds = len(audio_segment) / 1000.0
-    # Print or use the extracted information
-    logging.info('Channels: {}'.format(channels))
-    logging.info('Frame Rate: {}'.format(frame_rate))
-    logging.info('Sample Width {}'.format(sample_width))
-    logging.info('Duration (seconds): {}'.format(duration_in_seconds))
+    logging.info('Channels: {}'.format(audio_segment.channels))
+    logging.info('Frame Rate: {} Hz'.format(audio_segment.frame_rate))
+    logging.info('Sample Width: {} bits/sample'.format(audio_segment.sample_width))
+    logging.info('Duration: {} sec'.format(len(audio_segment) / 1000.0))
 
 def transcribe(audio_blob, lang_src, beam_size=5, history=None, task='transcribe'):
     describe(audio_blob)

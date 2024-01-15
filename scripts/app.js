@@ -53,28 +53,23 @@ function clickRecordButton(){
 }
 
 const serverRequest = async () => {
-  if (audioRec.audioChunks.length == 0){
-    return;
+  if (audioRec.audioChunks.length > 0){
+    console.log('serverRequest');
+    let address = 'http://' + document.getElementById('IP').value + ':' + document.getElementById('PORT').value + document.getElementById('ROUTE').value;
+    let daudio = audioRec.get();
+    const formData = new FormData();
+    formData.append('lang_src', lang_src);
+    formData.append('lang_tgt', lang_tgt);
+    formData.append('audio', daudio['blob']);
+    formData.append('length', daudio['length']);
+    try {
+      const response = await fetch(address, { method: 'POST', body: formData });    
+      if (!response.ok) { console.error('Server returned an error:', response.statusText); return; }
+      const data = await response.json();
+      updateResults(data);
+    } 
+    catch (error) { console.error('Fetch error:', error); }
   }
-  console.log('serverRequest');
-  let address = 'http://' + document.getElementById('IP').value + ':' + document.getElementById('PORT').value + document.getElementById('ROUTE').value;
-  let daudio = audioRec.get();
-  const audio = daudio['audio'];
-  const blob = new Blob(audio, { type: 'audio/webm' });
-  const formData = new FormData();
-  //console.log(`audio.length = ${length}`);
-  console.log(`audio = ${audio}`);
-  formData.append('lang_src', lang_src);
-  formData.append('lang_tgt', lang_tgt);
-  formData.append('audio', blob);
-  formData.append('length', audio.length);
-  try {
-    const response = await fetch(address, { method: 'POST', body: formData });    
-    if (!response.ok) { console.error('Server returned an error:', response.statusText); return; }
-    const data = await response.json();
-    updateResults(data);
-  } 
-  catch (error) { console.error('Fetch error:', error); }
 }
 
 function updateResults(data){
