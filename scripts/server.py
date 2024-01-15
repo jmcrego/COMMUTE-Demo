@@ -25,6 +25,7 @@ Tokenizer = pyonmttok.Tokenizer("aggressive", joiner_annotate=True, preserve_pla
 HOST = '0.0.0.0'
 PORT = 12345
 
+'''
 def blob2io(audio_blob):
     # Assuming file_storage is a FileStorage object representing the uploaded audio file # Replace this with your actual FileStorage object
     file_storage = FileStorage()
@@ -62,12 +63,13 @@ def blob2samples(audio_blob):
     # Convert raw audio data to a float32 list
     audio_samples = np.frombuffer(raw_audio_data, dtype=np.int16).astype(np.float32) / np.iinfo(np.int16).max
     return audio_samples
+'''
 
-def transcribe(audio_file, lang_src, beam_size=5, history=None, task='transcribe'):
-    #audio_samples = blob2samples(audio_file)
-    #audio_samples = blob2io(audio_file)
+def transcribe(audio_blob, lang_src, beam_size=5, history=None, task='transcribe'):
+    #audio_samples = blob2samples(audio_blob)
+    #audio_samples = blob2io(audio_blob)
     language = None if lang_src == 'pr' else lang_src
-    segments, info = Transcriber.transcribe(audio_file, language=language, task=task, beam_size=beam_size, vad_filter=True, word_timestamps=True, initial_prompt=history)
+    segments, info = Transcriber.transcribe(audio_blob, language=language, task=task, beam_size=beam_size, vad_filter=True, word_timestamps=True, initial_prompt=history)
     transcription = []
     for segment in segments:
         for word in segment.words:
@@ -85,26 +87,26 @@ def translate(transcription, lang_tgt):
     return translation
 
 def endingSentence(transcription, length):
-    remove_n_chunks = length ### todo
-    return remove_n_chunks
+    advance_n_chunks = length ### todo
+    return advance_n_chunks
 
 def processRequest(input_data):
-    audio_file = request.files['audio']
+    audio_blob = request.files['audio']
     lang_src = request.form.get('lang_src')
     lang_tgt = request.form.get('lang_tgt')
     length = request.form.get('length')
     logging.info('lang_src: {}, lang_tgt: {}, length: {}'.format(lang_src, lang_tgt, length))
-    transcription, lang_src = transcribe(audio_file, lang_src)
+    transcription, lang_src = transcribe(audio_blob, lang_src)
     logging.info('transcription = [{}] {}'.format(lang_src, transcription))
     translation = translate(transcription, lang_tgt)
     logging.info('translation = {}'.format(translation))
-    remove_n_chunks = endingSentence(transcription, length)
+    advance_n_chunks = endingSentence(transcription, length)
     output_data = {
         "lang_src": lang_src,
         "lang_tgt": lang_tgt,
         "transcription": transcription,
         "translation": translation,
-        "remove_n_chunks": remove_n_chunks,
+        "advance": advance_n_chunks,
         "status": "success",
         "message": "Request processed successfully"
     }

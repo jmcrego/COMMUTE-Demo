@@ -59,21 +59,19 @@ const serverRequest = async () => {
     return;
   }
   let address = 'http://' + document.getElementById('IP').value + ':' + document.getElementById('PORT').value + document.getElementById('ROUTE').value;
-  blob = audioRec.blob();
-
+  let audio_length = audioRec.get();
+  let audio = audio_length['audio']
+  let length = audio_length['length']
   const formData = new FormData();
+  console.log(`audio.length = ${length}`);
+  console.log(`audio = ${audio}`);
   formData.append('lang_src', lang_src);
   formData.append('lang_tgt', lang_tgt);
-  formData.append('audio', blob['audio']);
-  formData.append('length', blob['length']);
-  console.log(`audioChunks.length = ${blob['length']}`); 
-
+  formData.append('audio', audio);
+  formData.append('length', length);
   try {
     const response = await fetch(address, { method: 'POST', body: formData });    
-    if (!response.ok) {
-      console.error('Server returned an error:', response.statusText);
-      return;
-    }
+    if (!response.ok) { console.error('Server returned an error:', response.statusText); return; }
     const data = await response.json();
     updateResults(data);
   } 
@@ -87,9 +85,10 @@ function updateResults(data){
   var secondCell = tableResults.rows[1].cells[1];    
   firstCell.innerHTML = langTag(data.lang_src) + ' ' + data.transcription;
   secondCell.innerHTML = langTag(data.lang_tgt) + ' ' + data.translation;
-  if (data.remove_n_chunks>0) { //end of sentence (add new row for the remaining requests) 
-    console.log(`removing ${data.remove_n_chunks} chunks`)
-    audioRec.remove(data.remove_n_chunks);
+  advance = parseInt(data.advance);
+  if (advance>0) { //end of sentence (add new row for the remaining requests) 
+    audioRec.advance(advance);
+    console.log(`firstChunk advanced to ${audioRec.firstChunk}`)
     insertSecondRow()
   }
 }
@@ -101,6 +100,8 @@ function insertSecondRow(){
   secondRow.insertCell(1);
   secondRow.cells[0].classList.add('cellcontent');
   secondRow.cells[1].classList.add('cellcontent');
+  secondRow.cells[0].innerHTML = '';
+  secondRow.cells[1].innerHTML = '';
 }
 
 function langTag(l){
