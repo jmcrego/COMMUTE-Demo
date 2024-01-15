@@ -82,8 +82,8 @@ def translate(transcription, lang_tgt):
     translation = ''
     input_stream = "｟" + lang_tgt + "｠" + " " + transcription
     results = Translator.translate_batch([Tokenizer(input_stream)])
-    logging.info('results = {}'.format(results[0].hypotheses[0]))
     translation = Tokenizer.detokenize(results[0].hypotheses[0])
+    return translation
 
 def endingSentence(transcription):
     remove_n_chunks = 0 ### todo
