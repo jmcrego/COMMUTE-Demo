@@ -60,20 +60,28 @@ const serverRequest = async () => {
   }
   let address = 'http://' + document.getElementById('IP').value + ':' + document.getElementById('PORT').value + document.getElementById('ROUTE').value;
   blob = audioRec.blob();
+
   const formData = new FormData();
   formData.append('lang_src', lang_src);
   formData.append('lang_tgt', lang_tgt);
   formData.append('audio', blob['audio']);
   formData.append('length', blob['length']);
   console.log(`audioChunks.length = ${blob['length']}`); 
-  const responsePromise = fetch(address, { method: "POST", body: formData /*, credentials: "same-origin", headers: {"Content-Type": "application/json"}*/ })
-    .then(response => { if (!response.ok) { throw new Error('Network response was not ok'); } })
-    .then(data => { if (data) { updateResults(data); } })
-    .catch(error => { console.error('Fetch error:', error); });    
+
+  try {
+    const response = await fetch(address, { method: 'POST', body: formData });    
+    if (!response.ok) {
+      console.error('Server returned an error:', response.statusText);
+      return;
+    }
+    const data = await response.json();
+    updateResults(data);
+  } 
+  catch (error) { console.error('Fetch error:', error); }
 }
 
 function updateResults(data){
-  console.log('Data:', data);
+  console.log('updateResults Data:', data);
   if (tableResults.rows.length == 1) { insertSecondRow(); }
   var firstCell = tableResults.rows[1].cells[0];
   var secondCell = tableResults.rows[1].cells[1];    

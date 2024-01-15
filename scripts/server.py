@@ -84,8 +84,8 @@ def translate(transcription, lang_tgt):
     translation = Tokenizer.detokenize(results[0].hypotheses[0])
     return translation
 
-def endingSentence(transcription):
-    remove_n_chunks = 0 ### todo
+def endingSentence(transcription, lenth):
+    remove_n_chunks = length ### todo
     return remove_n_chunks
 
 def processRequest(input_data):
@@ -95,10 +95,10 @@ def processRequest(input_data):
     length = request.form.get('length')
     logging.info('lang_src: {}, lang_tgt: {}, length: {}'.format(lang_src, lang_tgt, length))
     transcription, lang_src = transcribe(audio_file, lang_src)
-    logging.info('transcription = {}, {}'.format(lang_src, transcription))
+    logging.info('transcription = [{}] {}'.format(lang_src, transcription))
     translation = translate(transcription, lang_tgt)
     logging.info('translation = {}'.format(translation))
-    remove_n_chunks = endingSentence(transcription)
+    remove_n_chunks = endingSentence(transcription, length)
     output_data = {
         "lang_src": lang_src,
         "lang_tgt": lang_tgt,
