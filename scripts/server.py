@@ -57,7 +57,7 @@ def describe(audio_blob):
     sample_width = audio_segment.sample_width
     duration_in_seconds = len(audio_segment) / 1000.0
     # Print or use the extracted information
-    lopging.info('Channels: {}'.format(channels))
+    logging.info('Channels: {}'.format(channels))
     logging.info('Frame Rate: {}'.format(frame_rate))
     logging.info('Sample Width {}'.format(sample_width))
     logging.info('Duration (seconds): {}'.format(duration_in_seconds))
