@@ -32,7 +32,6 @@ def describe(audio_blob):
     logging.info('Duration: {} sec'.format(len(audio_segment) / 1000.0))
 
 def transcribe(audio_blob, lang_src, beam_size=5, history=None, task='transcribe'):
-    describe(audio_blob)
     language = None if lang_src == 'pr' else lang_src
     segments, info = Transcriber.transcribe(audio_blob, language=language, task=task, beam_size=beam_size, vad_filter=True, word_timestamps=True, initial_prompt=history)
     transcription = []
@@ -61,6 +60,7 @@ def processRequest(input_data):
     lang_tgt = request.form.get('lang_tgt')
     length = request.form.get('length')
     logging.info('lang_src: {}, lang_tgt: {}, length: {}'.format(lang_src, lang_tgt, length))
+    #describe(audio_blob)
     transcription, lang_src = transcribe(audio_blob, lang_src)
     logging.info('transcription = {}'.format([lang_src, transcription]))
     translation = translate(transcription, lang_tgt)
