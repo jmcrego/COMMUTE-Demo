@@ -19,7 +19,7 @@ var audioRecorder = {
                 navigator.mediaDevices.getUserMedia({ audio: true })
                     .then(stream => { 
                         this.streamBeingCaptured = stream; 
-                        const mediaRecorderOptions = { mimeType: mimetype, audioBitsPerSecond: 32000, audio: true, video: false, audioBitrateMode: 'constant' };
+                        const mediaRecorderOptions = { mimeType: mimetype, audioBitsPerSecond: 15000, audio: true, video: false, audioBitrateMode: 'constant' };
                         this.mediaRecorder = new MediaRecorder(stream, mediaRecorderOptions); 
                         this.audioChunks = []; 
                         this.mediaRecorder.addEventListener("dataavailable", event => { 
