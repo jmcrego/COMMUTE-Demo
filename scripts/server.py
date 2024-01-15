@@ -84,7 +84,7 @@ def translate(transcription, lang_tgt):
     translation = Tokenizer.detokenize(results[0].hypotheses[0])
     return translation
 
-def endingSentence(transcription, lenth):
+def endingSentence(transcription, length):
     remove_n_chunks = length ### todo
     return remove_n_chunks
 
