@@ -73,7 +73,7 @@ def transcribe(audio_file, lang_src, beam_size=5, history=None, task='transcribe
         for word in segment.words:
             transcription.append(word.word)
             logging.info("word\t{}\t{}\t{}".format(word.start,word.end,word.word))
-    return ' '.join(transcription), info.language
+    return ''.join(transcription), info.language
 
 def translate(transcription, lang_tgt):
     logging.info('translate({}, {})'.format(transcription, lang_tgt))
@@ -82,6 +82,7 @@ def translate(transcription, lang_tgt):
     translation = ''
     input_stream = "｟" + lang_tgt + "｠" + " " + transcription
     results = Translator.translate_batch([Tokenizer(input_stream)])
+    logging.info('results = {}'.format(results))
     translation = Tokenizer.detokenize(results[0].hypotheses[0])
 
 def endingSentence(transcription):
