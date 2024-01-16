@@ -8,6 +8,9 @@ from pydub import AudioSegment
 from flask import Flask, request, jsonify
 from flask_cors import CORS  # Import the CORS module
 
+from pydub import AudioSegment
+from io import BytesIO
+
 logging.basicConfig(format='[%(asctime)s.%(msecs)03d] %(levelname)s %(message)s', datefmt='%Y-%m-%d_%H:%M:%S', level=getattr(logging, 'INFO', None), filename=None)
 
 device = 'cpu' #cpu or cuda
@@ -22,6 +25,16 @@ Translator = ctranslate2.Translator(ct2, device=device)
 
 bpe = '/nfs/RESEARCH/crego/projects/COMMUTE-Demo/config/bpe-ar-en-fr-50k'
 Tokenizer = pyonmttok.Tokenizer("aggressive", joiner_annotate=True, preserve_placeholders=True, bpe_model_path=bpe)
+
+def convert_webm_to_wav(webm_blob):
+    # Convert WebM blob to AudioSegment
+    webm_data = BytesIO(webm_blob)
+    audio_segment = AudioSegment.from_file(webm_data, format="webm")
+
+    # Convert AudioSegment to WAV blob
+    wav_data = audio_segment.export(format="wav").read()
+    wav_blob = BytesIO(wav_data)
+    
 
 def describe(audio_blob):
     # running this function changes the audio_blob and inutilizes it
@@ -54,6 +67,7 @@ def translate(transcription, lang_tgt):
 
 def processRequest(input_data):
     audio_blob = request.files['audio']
+    audio_blob = convert_webm_to_wav(audio_blob)
     lang_src = request.form.get('lang_src')
     lang_tgt = request.form.get('lang_tgt')
     firstChunk = int(request.form.get('firstChunk'))

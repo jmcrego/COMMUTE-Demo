@@ -1,8 +1,5 @@
 /*** object encapsulating the functionality for recording audio using the Web Audio API and the MediaRecorder API in a web browser ***/
 
-const mimetype = 'audio/webm'
-const mediaRecorderOptions = { mimeType: mimetype, audioBitsPerSecond: 16000, audio: true, video: false };
-
 class AudioRecorder{
 
     constructor(){
@@ -15,7 +12,7 @@ class AudioRecorder{
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then((stream) => {
                 this.stream = stream;
-                this.mediaRecorder = new MediaRecorder(stream, mediaRecorderOptions);
+                this.mediaRecorder = new MediaRecorder(stream, {mimeType: 'audio/webm'}); //, channels: 1, audioBitsPerSecond: 16000, audio: true, video: false});
                 this.mediaRecorder.ondataavailable = (event) => { 
                     if (event.data.size > 0) { 
                         this.audioChunks.push(event.data); 

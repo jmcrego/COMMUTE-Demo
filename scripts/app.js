@@ -3,13 +3,15 @@ let tableResults = document.getElementById("tableResults");
 let recordButton = document.getElementById("recordButton");
 let delay_ms = document.getElementById("delay_ms");
 let startPromise = null;
-const audioRec = new AudioRecorder();
 let lang_src = 'pr';
 let lang_tgt = 'fr';
 let intervalId = 0;
 let firstChunk = 0;
+const curr_date = getDate();
 document.getElementById("transcript_pr").style.backgroundColor = 'LightGrey';
 document.getElementById("translate_fr").style.backgroundColor = 'LightBlue';
+
+const audioRec = new AudioRecorder();
 
 function changeTranscription(cellId) {
   document.getElementById("transcript_pr").style.backgroundColor = 'transparent';
@@ -56,12 +58,13 @@ const serverRequest = async () => {
   if (audioRec.audioChunks.length > 0){
     const address = 'http://' + document.getElementById('IP').value + ':' + document.getElementById('PORT').value + document.getElementById('ROUTE').value;
     const slicedAudioChunks = audioRec.get(firstChunk);
-    if (slicedAudioChunks != null) {
-      const blob = new Blob(slicedAudioChunks, { type: 'audio/wav' })
+    if (slicedAudioChunks != null && slicedAudioChunks.length > 3) {
+      const blob = new Blob([slicedAudioChunks], { type: 'audio/webm' })
+      saveBlob(blob, `audio_${curr_date}_fromChunk-${firstChunk}-len-${slicedAudioChunks.length}`);
       const formData = new FormData();
       formData.append('lang_src', lang_src);
       formData.append('lang_tgt', lang_tgt);
-      formData.append('audio', /*daudio['blob']*/ blob);
+      formData.append('audio', blob);
       formData.append('firstChunk', firstChunk);
       formData.append('nChunks', slicedAudioChunks.length);
       console.log(`serverRequest audio: ${blob}, Blob size: ${blob.size}, firstChunk: ${firstChunk} nChunks: ${slicedAudioChunks.length}`);
@@ -70,7 +73,6 @@ const serverRequest = async () => {
         if (!response.ok) { console.error('Server returned an error:', response.statusText); return; }
         const data = await response.json();
         updateResults(data);
-        saveBlob(blob, 'audioblob_'+audioRec.firstChunk+'-'+slicedAudioChunks.length);
       } 
       catch (error) { console.error('Fetch error:', error); }
     }
@@ -122,11 +124,28 @@ function playBlob(blob) {
 }
 
 function saveBlob(blob, name) {
+  //const audioElement = new Audio(URL.createObjectURL(blob));
+  console.log('AUDIO Blob:', blob);
   // Example: save the blob as a file
   const downloadLink = document.createElement('a');
   downloadLink.href = URL.createObjectURL(blob);
-  downloadLink.download = name+'.wav';
-  downloadLink.click();  
+  downloadLink.download = name+'.webm';
+  downloadLink.click();   
 }
 
+function getDate(){
+  // Create a new Date object
+  const currentDate = new Date();
+  // Get the current date and time
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth() + 1; // Months are zero-based, so add 1
+  const day = currentDate.getDate();
+  const hours = currentDate.getHours();
+  const minutes = currentDate.getMinutes();
+  const seconds = currentDate.getSeconds();
+  // Format the date and time as a string
+  const date = `${year}-${month < 10 ? '0' : ''}${month}-${day < 10 ? '0' : ''}${day}`
+  const time = `${hours < 10 ? '0' : ''}${hours}-${minutes < 10 ? '0' : ''}${minutes}-${seconds < 10 ? '0' : ''}${seconds}`; 
+  return date + '@' + time; 
+}
 
