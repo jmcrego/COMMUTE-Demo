@@ -61,15 +61,13 @@ const serverRequest = async () => {
     formData.append('lang_tgt', lang_tgt);
     formData.append('audio', daudio['blob']);
     formData.append('n_chunks', daudio['n_chunks']);
-    console.log(`serverRequest n_chunks: ${daudio['n_chunks']}, audio: ${daudio['blob']}`);
-    saveBlob(daudio['blob'],'kk'+audioRec.firstChunk);
-    //console.log(`serverRequest formData: ${formData}`);
-    console.log(`Blob size: ${daudio['blob'].size}, start position: ${audioRec.firstChunk}`);
+    console.log(`serverRequest n_chunks: ${daudio['n_chunks']}, audio: ${daudio['blob']}, Blob size: ${daudio['blob'].size}, firstChunk: ${audioRec.firstChunk}`);
     try {
       const response = await fetch(address, { method: 'POST', body: formData });    
       if (!response.ok) { console.error('Server returned an error:', response.statusText); return; }
       const data = await response.json();
       updateResults(data);
+      saveBlob(daudio['blob'], 'audioblob_'+audioRec.firstChunk+'-'+daudio['n_chunks']);
     } 
     catch (error) { console.error('Fetch error:', error); }
   }

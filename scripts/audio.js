@@ -5,6 +5,7 @@ mimetype = 'audio/webm'
 var audioRecorder = {
     // Properties
     audioChunks: [],
+    baseChunk: null,
     firstChunk: 0,
     mediaRecorder: null,
     streamBeingCaptured: null,
@@ -22,9 +23,14 @@ var audioRecorder = {
                         const mediaRecorderOptions = { mimeType: mimetype, audioBitsPerSecond: 16000, audio: true, video: false };
                         this.mediaRecorder = new MediaRecorder(stream/*, mediaRecorderOptions*/); 
                         this.audioChunks = []; 
-                        this.mediaRecorder.addEventListener("dataavailable", event => { 
+                        this.mediaRecorder.addEventListener("dataavailable", event => {                             
                             this.audioChunks.push(event.data); 
-                            console.log('audioChunks.length = ',this.audioChunks.length)
+                            /*
+                            if (this.audioChunks.length % callback_every === 0){
+                                console.log('audioChunks.length = ',this.audioChunks.length)
+                                callback();
+                            }
+                            */
                         }); 
                         this.mediaRecorder.start(); 
                         this.intervalId = setInterval(() => this.mediaRecorder.requestData(), chunk_ms); 
@@ -49,19 +55,18 @@ var audioRecorder = {
         this.audioChunks = []; 
     },
     get: function() { // blob with list of chunks and number of chunks
-        let lenChunk = this.audioChunks.length;
-        slice = this.audioChunks.slice(this.firstChunk, lenChunk);
+        slice = this.audioChunks.slice(this.firstChunk);
         if (this.firstChunk > 0){
             slice.unshift(this.audioChunks[0]);
         }
         let blob = new Blob(slice, { type: 'audio/webm' })
         return {
             'blob': blob,
-            'n_chunks': lenChunk - this.firstChunk
+            'n_chunks': slice.length
         };
     },    
     advance: function(n){ //advance firstChunk by n chunnks
-        if (n > 0 && this.audioChunks.length >= n) { 
+        if (n > 0 && this.audioChunks.length >= n) {
             this.firstChunk += n; 
             /*this.audioChunks.splice(n);*/ 
         }
