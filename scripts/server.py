@@ -70,7 +70,7 @@ def processRequest(input_data):
         "lang_tgt": lang_tgt,
         "transcription": transcription,
         "translation": translation,
-        "firstChunk": firstChunk + nChunks,
+        "firstChunk": firstChunk + nChunks, 
         "status": "success",
         "message": "Request processed successfully"
     }
