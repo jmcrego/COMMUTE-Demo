@@ -76,7 +76,7 @@ const serverRequest = async () => {
 
 function updateResults(data){
   console.log('updateResults Data:', data);
-  if (tableResults.rows.length == 1) { insertSecondRow(); }
+  if (tableResults.rows.length == 1) { insertNewSecondRow(); }
   var firstCell = tableResults.rows[1].cells[0];
   var secondCell = tableResults.rows[1].cells[1];    
   firstCell.innerHTML = langTag(data.lang_src) + ' ' + data.transcription;
@@ -85,19 +85,19 @@ function updateResults(data){
   if (advance>0) { //end of sentence (add new row for the remaining requests) 
     audioRec.advance(advance);
     console.log(`firstChunk advanced to ${audioRec.firstChunk}`)
-    insertSecondRow()
+    insertNewSecondRow()
   }
 }
 
-function insertSecondRow(){
+function insertNewSecondRow(){
   console.log('insertSecondRow')
   secondRow = tableResults.insertRow(1); 
   secondRow.insertCell(0);
   secondRow.insertCell(1);
   secondRow.cells[0].classList.add('cellcontent');
   secondRow.cells[1].classList.add('cellcontent');
-  secondRow.cells[0].innerHTML = '';
-  secondRow.cells[1].innerHTML = '';
+  secondRow.cells[0].innerHTML = '<span style="color: white">x</span>';
+  secondRow.cells[1].innerHTML = '<span style="color: white">x</span>';
 }
 
 function langTag(l){
