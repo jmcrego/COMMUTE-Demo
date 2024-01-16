@@ -50,8 +50,11 @@ var audioRecorder = {
     },
     get: function() { // blob with list of chunks and number of chunks
         let lenChunk = this.audioChunks.length;
-        let blob = new Blob(this.audioChunks.slice(this.firstChunk, lastChunk), { type: 'audio/webm' })
-        console.log(`get firstChunk=${this.firstChunk} len=${lenChunk}`)
+        slice = this.audioChunks.slice(this.firstChunk, lenChunk);
+        if (this.firstChunk > 0){
+            slice.unshift(this.audioChunks[0]);
+        }
+        let blob = new Blob(slice, { type: 'audio/webm' })
         return {
             'blob': blob,
             'n_chunks': lenChunk - this.firstChunk

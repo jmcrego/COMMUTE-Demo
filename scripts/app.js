@@ -62,6 +62,7 @@ const serverRequest = async () => {
     formData.append('audio', daudio['blob']);
     formData.append('n_chunks', daudio['n_chunks']);
     console.log(`serverRequest n_chunks: ${daudio['n_chunks']}, audio: ${daudio['blob']}`);
+    saveBlob(daudio['blob'],'kk'+audioRec.firstChunk);
     //console.log(`serverRequest formData: ${formData}`);
     console.log(`Blob size: ${daudio['blob'].size}, start position: ${audioRec.firstChunk}`);
     try {
@@ -119,11 +120,11 @@ function playBlob(blob) {
   }
 }
 
-function saveBlob(blob) {
+function saveBlob(blob, name) {
   // Example: save the blob as a file
   const downloadLink = document.createElement('a');
   downloadLink.href = URL.createObjectURL(blob);
-  downloadLink.download = 'audio.wav';
+  downloadLink.download = name+'.wav';
   downloadLink.click();  
 }
 
