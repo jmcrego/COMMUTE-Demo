@@ -53,7 +53,7 @@ var audioRecorder = {
         let blob = new Blob(this.audioChunks.slice(this.firstChunk), { type: 'audio/webm' })
         return {
             'blob': blob,
-            'length': lastChunk - this.firstChunk
+            'n_chunks': lastChunk - this.firstChunk
         };
     },    
     advance: function(n){ //advance firstChunk by n chunnks

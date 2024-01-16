@@ -26,7 +26,8 @@ Tokenizer = pyonmttok.Tokenizer("aggressive", joiner_annotate=True, preserve_pla
 def describe(audio_blob):
     # running this function changes the audio_blob and inutilizes it
     # Process the audio Blob with pydub
-    audio_segment = AudioSegment.from_file(audio_blob)        
+    audio_stream = BytesIO(audio_blob.read())
+    audio_segment = AudioSegment.from_file(audio_stream)
     logging.info('Channels: {}'.format(audio_segment.channels))
     logging.info('Frame Rate: {} Hz'.format(audio_segment.frame_rate))
     logging.info('Sample Width: {} bits/sample'.format(audio_segment.sample_width))
@@ -51,22 +52,22 @@ def translate(transcription, lang_tgt):
     translation = Tokenizer.detokenize(results[0].hypotheses[0])
     return translation
 
-def endingSentence(transcription, length):
-    advance_n_chunks = length ### todo
+def endingSentence(transcription, n_chunks):
+    advance_n_chunks = n_chunks ### todo
     return advance_n_chunks
 
 def processRequest(input_data):
     audio_blob = request.files['audio']
     lang_src = request.form.get('lang_src')
     lang_tgt = request.form.get('lang_tgt')
-    length = request.form.get('length')
-    logging.info('lang_src: {}, lang_tgt: {}, length: {}'.format(lang_src, lang_tgt, length))
+    n_chunks = parseInt(request.form.get('n_chunks'))
+    logging.info('lang_src: {}, lang_tgt: {}, n_chunks: {}'.format(lang_src, lang_tgt, n_chunks))
     #describe(audio_blob)
     transcription, lang_src = transcribe(audio_blob, lang_src)
     logging.info('transcription = {}'.format([lang_src, transcription]))
     translation = translate(transcription, lang_tgt)
     logging.info('translation = {}'.format(translation))
-    advance_n_chunks = endingSentence(transcription, length)
+    advance_n_chunks = endingSentence(transcription, n_chunks)
     output_data = {
         "lang_src": lang_src,
         "lang_tgt": lang_tgt,
