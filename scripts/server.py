@@ -26,15 +26,14 @@ Translator = ctranslate2.Translator(ct2, device=device)
 bpe = '/nfs/RESEARCH/crego/projects/COMMUTE-Demo/config/bpe-ar-en-fr-50k'
 Tokenizer = pyonmttok.Tokenizer("aggressive", joiner_annotate=True, preserve_placeholders=True, bpe_model_path=bpe)
 
+
 def convert_webm_to_wav(webm_blob):
     # Convert WebM blob to AudioSegment
-    webm_data = BytesIO(webm_blob)
-    audio_segment = AudioSegment.from_file(webm_data, format="webm")
-
+    audio_segment = AudioSegment.from_file(BytesIO(webm_blob), format="webm")
     # Convert AudioSegment to WAV blob
-    wav_data = audio_segment.export(format="wav").read()
-    wav_blob = BytesIO(wav_data)
-    
+    wav_blob = BytesIO()
+    audio_segment.export(wav_blob, format="wav")
+    return wav_blob    
 
 def describe(audio_blob):
     # running this function changes the audio_blob and inutilizes it
