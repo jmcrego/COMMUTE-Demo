@@ -53,7 +53,7 @@ def translate(transcription, lang_tgt):
     return translation
 
 def endingSentence(transcription, n_chunks):
-    advance_n_chunks = n_chunks-1 ### todo
+    advance_n_chunks = n_chunks ### todo
     return advance_n_chunks
 
 def processRequest(input_data):

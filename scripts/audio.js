@@ -25,12 +25,7 @@ var audioRecorder = {
                         this.audioChunks = []; 
                         this.mediaRecorder.addEventListener("dataavailable", event => {                             
                             this.audioChunks.push(event.data); 
-                            /*
-                            if (this.audioChunks.length % callback_every === 0){
-                                console.log('audioChunks.length = ',this.audioChunks.length)
-                                callback();
-                            }
-                            */
+                            console.log('push audioChunks.length = ',this.audioChunks.length)
                         }); 
                         this.mediaRecorder.start(); 
                         this.intervalId = setInterval(() => this.mediaRecorder.requestData(), chunk_ms); 
@@ -55,16 +50,17 @@ var audioRecorder = {
         this.audioChunks = []; 
     },
     get: function() { // blob with list of chunks and number of chunks
-        slice = this.audioChunks.slice(this.firstChunk);
-        if (this.firstChunk > 0){
-            slice.unshift(this.audioChunks[0]);
-        }
-        let blob = new Blob(slice, { type: 'audio/webm' })
+        let slice = this.audioChunks.slice(this.firstChunk);
+        if (this.firstChunk > 0){slice.unshift(this.audioChunks[0]);}
+        //let blob = new Blob(slice, { type: 'audio/webm' })
+        return slice;
+        /*
         return {
             'blob': blob,
             'n_chunks': slice.length
         };
-    },    
+        */
+    },
     advance: function(n){ //advance firstChunk by n chunnks
         if (n > 0 && this.audioChunks.length >= n) {
             this.firstChunk += n; 
