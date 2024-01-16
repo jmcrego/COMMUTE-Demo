@@ -70,7 +70,7 @@ const serverRequest = async () => {
         if (!response.ok) { console.error('Server returned an error:', response.statusText); return; }
         const data = await response.json();
         updateResults(data);
-        saveBlob(blob, 'audioblob_'+audioRec.firstChunk+'-'+slice.length);
+        saveBlob(blob, 'audioblob_'+audioRec.firstChunk+'-'+slicedAudioChunks.length);
       } 
       catch (error) { console.error('Fetch error:', error); }
     }
