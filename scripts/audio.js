@@ -1,12 +1,53 @@
 /*** object encapsulating the functionality for recording audio using the Web Audio API and the MediaRecorder API in a web browser ***/
 
-mimetype = 'audio/webm'
+const mimetype = 'audio/webm'
+const mediaRecorderOptions = { mimeType: mimetype, audioBitsPerSecond: 16000, audio: true, video: false };
 
+class AudioRecorder{
+
+    constructor(){
+        this.audioChunks = [];
+        this.mediaRecorder = null;
+        this.stream = null;
+    }
+
+    start(chunk_ms) {
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then((stream) => {
+                this.stream = stream;
+                this.mediaRecorder = new MediaRecorder(stream, mediaRecorderOptions);
+                this.mediaRecorder.ondataavailable = (event) => { 
+                    if (event.data.size > 0) { 
+                        this.audioChunks.push(event.data); 
+                        console.log('audicoChunks length = ',this.audioChunks.length)
+                    } 
+                };
+                this.mediaRecorder.start(chunk_ms); // Collect audio every chunk_ms ms
+            })
+            .catch((error) => { console.error('Error accessing microphone:', error); });
+    }
+
+    stop() {
+        if (this.mediaRecorder && this.stream) {
+            this.mediaRecorder.stop();
+            this.stream.getTracks().forEach(track => track.stop());
+        }
+    }
+
+    get(firstChunk) {
+        if (firstChunk < 0 || firstChunk >= this.audioChunks.length) { 
+            console.error('Invalid firstChunk position = ',firstChunk); 
+            return null; 
+        }
+        return this.audioChunks.slice(firstChunk); //.unshift(this.audioChunks[0]);
+    }
+
+}
+
+/*
 var audioRecorder = {
     // Properties
     audioChunks: [],
-    baseChunk: null,
-    firstChunk: 0,
     mediaRecorder: null,
     streamBeingCaptured: null,
     intervalId: 0,
@@ -21,7 +62,7 @@ var audioRecorder = {
                     .then(stream => { 
                         this.streamBeingCaptured = stream; 
                         const mediaRecorderOptions = { mimeType: mimetype, audioBitsPerSecond: 16000, audio: true, video: false };
-                        this.mediaRecorder = new MediaRecorder(stream/*, mediaRecorderOptions*/); 
+                        this.mediaRecorder = new MediaRecorder(stream, mediaRecorderOptions); 
                         this.audioChunks = []; 
                         this.mediaRecorder.addEventListener("dataavailable", event => {                             
                             this.audioChunks.push(event.data); 
@@ -49,22 +90,15 @@ var audioRecorder = {
         }
         this.audioChunks = []; 
     },
-    get: function() { // blob with list of chunks and number of chunks
-        let slice = this.audioChunks.slice(this.firstChunk);
-        if (this.firstChunk > 0){slice.unshift(this.audioChunks[0]);}
-        //let blob = new Blob(slice, { type: 'audio/webm' })
+    get: function(firstChunk) { 
+        let slice = this.audioChunks.slice(firstChunk);
+        if (firstChunk > 0) {slice.unshift(this.audioChunks[0]);}
         return slice;
-        /*
-        return {
-            'blob': blob,
-            'n_chunks': slice.length
-        };
-        */
     },
     advance: function(n){ //advance firstChunk by n chunnks
         if (n > 0 && this.audioChunks.length >= n) {
             this.firstChunk += n; 
-            /*this.audioChunks.splice(n);*/ 
         }
     }
 };
+*/

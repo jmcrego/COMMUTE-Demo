@@ -52,16 +52,13 @@ def translate(transcription, lang_tgt):
     translation = Tokenizer.detokenize(results[0].hypotheses[0])
     return translation
 
-def endingSentence(transcription, n_chunks):
-    advance_n_chunks = n_chunks ### todo
-    return advance_n_chunks
-
 def processRequest(input_data):
     audio_blob = request.files['audio']
     lang_src = request.form.get('lang_src')
     lang_tgt = request.form.get('lang_tgt')
-    n_chunks = int(request.form.get('n_chunks'))
-    logging.info('lang_src: {}, lang_tgt: {}, n_chunks: {}'.format(lang_src, lang_tgt, n_chunks))
+    firstChunk = int(request.form.get('firstChunk'))
+    nChunks = int(request.form.get('nChunks'))
+    logging.info('lang_src: {}, lang_tgt: {}, firstChunk: {}, nChunks: {}'.format(lang_src, lang_tgt, firstChunk, nChunks))
     #describe(audio_blob)
     transcription, lang_src = transcribe(audio_blob, lang_src)
     logging.info('transcription = {}'.format([lang_src, transcription]))
@@ -73,7 +70,7 @@ def processRequest(input_data):
         "lang_tgt": lang_tgt,
         "transcription": transcription,
         "translation": translation,
-        "advance": advance_n_chunks,
+        "firstChunk": firstChunk + nChunks,
         "status": "success",
         "message": "Request processed successfully"
     }

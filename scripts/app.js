@@ -3,10 +3,11 @@ let tableResults = document.getElementById("tableResults");
 let recordButton = document.getElementById("recordButton");
 let delay_ms = document.getElementById("delay_ms");
 let startPromise = null;
-let audioRec = audioRecorder;
+const audioRec = new AudioRecorder();
 let lang_src = 'pr';
 let lang_tgt = 'fr';
 let intervalId = 0;
+let firstChunk = 0;
 document.getElementById("transcript_pr").style.backgroundColor = 'LightGrey';
 document.getElementById("translate_fr").style.backgroundColor = 'LightBlue';
 
@@ -36,42 +37,43 @@ function clickRecordButton(){
   if (recordButton.innerHTML == "Start"){ //start recording
     recordButton.innerHTML = "Stop";
     recordButton.style.backgroundColor = "DarkRed";
-    startPromise = audioRec.start(chunk_ms.value) // Start recording with a delay of delay_ms milliseconds
-    startPromise
-      .then(() => { console.log("Recording started successfully."); })
-      .catch(error => { console.error("Error starting recording: ", error); });
+    audioRec.start(chunk_ms.value) // Start recording with a delay of delay_ms milliseconds
     intervalId = setInterval(() => serverRequest(), delay_ms.value); //call serverRequest every delay_ms milliseconds
+    console.log(`Recording started delay_ms = ${delay_ms.value} chunk_ms = ${chunk_ms.value}`);
   }
   else { //stop recording
     recordButton.innerHTML = "Start";    
     recordButton.style.backgroundColor = "DarkBlue"; //"#0088cc";
-    startPromise //close need to wait for the completion of startPromise
-      .then(() => { audioRec.stop(); console.log('Recording stopped successfully.'); })
-      .catch(error => { console.error('Error stopping recording:', error); });
-    if (intervalId > 0) { clearInterval(intervalId); }//clear intervalId (stop serverRequests)
+    audioRec.stop(); 
+    console.log('Recording stopped successfully.');
+    if (intervalId > 0) { 
+      clearInterval(intervalId); 
+    }
   }
 }
 
 const serverRequest = async () => {
   if (audioRec.audioChunks.length > 0){
     const address = 'http://' + document.getElementById('IP').value + ':' + document.getElementById('PORT').value + document.getElementById('ROUTE').value;
-    //const daudio = audioRec.get();
-    const slice = audioRec.get()
-
-    const formData = new FormData();
-    formData.append('lang_src', lang_src);
-    formData.append('lang_tgt', lang_tgt);
-    formData.append('audio', /*daudio['blob']*/ new Blob(slice, { type: 'audio/webm' }));
-    formData.append('n_chunks', /*daudio['n_chunks']*/slice.length-1);
-    console.log(`serverRequest audio: ${daudio['blob']}, Blob size: ${daudio['blob'].size}, firstChunk: ${audioRec.firstChunk} n_chunks: ${daudio['n_chunks']}`);
-    try {
-      const response = await fetch(address, { method: 'POST', body: formData });    
-      if (!response.ok) { console.error('Server returned an error:', response.statusText); return; }
-      const data = await response.json();
-      updateResults(data);
-      saveBlob(daudio['blob'], 'audioblob_'+audioRec.firstChunk+'-'+daudio['n_chunks']);
-    } 
-    catch (error) { console.error('Fetch error:', error); }
+    const slicedAudioChunks = audioRec.get(firstChunk);
+    if (slicedAudioChunks != null) {
+      const blob = new Blob(slicedAudioChunks, { type: 'audio/wav' })
+      const formData = new FormData();
+      formData.append('lang_src', lang_src);
+      formData.append('lang_tgt', lang_tgt);
+      formData.append('audio', /*daudio['blob']*/ blob);
+      formData.append('firstChunk', firstChunk);
+      formData.append('nChunks', slicedAudioChunks.length);
+      console.log(`serverRequest audio: ${blob}, Blob size: ${blob.size}, firstChunk: ${firstChunk} nChunks: ${slicedAudioChunks.length}`);
+      try {
+        const response = await fetch(address, { method: 'POST', body: formData });    
+        if (!response.ok) { console.error('Server returned an error:', response.statusText); return; }
+        const data = await response.json();
+        updateResults(data);
+        saveBlob(blob, 'audioblob_'+audioRec.firstChunk+'-'+slice.length);
+      } 
+      catch (error) { console.error('Fetch error:', error); }
+    }
   }
 }
 
@@ -82,10 +84,9 @@ function updateResults(data){
   var secondCell = tableResults.rows[1].cells[1];    
   firstCell.innerHTML = langTag(data.lang_src) + ' ' + data.transcription;
   secondCell.innerHTML = langTag(data.lang_tgt) + ' ' + data.translation;
-  advance = parseInt(data.advance);
-  if (advance>0) { //end of sentence (add new row for the remaining requests) 
-    audioRec.advance(advance);
-    console.log(`firstChunk advanced to ${audioRec.firstChunk}`)
+  if (data.firstChunk > firstChunk) { //end of sentence (add new row for the remaining requests) 
+    firstChunk = data.firstChunk;
+    console.log(`firstChunk is now ${firstChunk}`);
     insertNewSecondRow()
   }
 }
