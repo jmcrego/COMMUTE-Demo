@@ -60,7 +60,7 @@ def processRequest(input_data):
     audio_blob = request.files['audio']
     lang_src = request.form.get('lang_src')
     lang_tgt = request.form.get('lang_tgt')
-    n_chunks = parseInt(request.form.get('n_chunks'))
+    n_chunks = int(request.form.get('n_chunks'))
     logging.info('lang_src: {}, lang_tgt: {}, n_chunks: {}'.format(lang_src, lang_tgt, n_chunks))
     #describe(audio_blob)
     transcription, lang_src = transcribe(audio_blob, lang_src)
