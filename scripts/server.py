@@ -64,7 +64,6 @@ def processRequest(input_data):
     logging.info('transcription = {}'.format([lang_src, transcription]))
     translation = translate(transcription, lang_tgt)
     logging.info('translation = {}'.format(translation))
-    advance_n_chunks = endingSentence(transcription, n_chunks)
     output_data = {
         "lang_src": lang_src,
         "lang_tgt": lang_tgt,
