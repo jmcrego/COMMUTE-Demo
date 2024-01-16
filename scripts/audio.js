@@ -19,8 +19,8 @@ var audioRecorder = {
                 navigator.mediaDevices.getUserMedia({ audio: true })
                     .then(stream => { 
                         this.streamBeingCaptured = stream; 
-                        const mediaRecorderOptions = { mimeType: mimetype, audioBitsPerSecond: 15000, audio: true, video: false };
-                        this.mediaRecorder = new MediaRecorder(stream, mediaRecorderOptions); 
+                        const mediaRecorderOptions = { mimeType: mimetype, audioBitsPerSecond: 16000, audio: true, video: false };
+                        this.mediaRecorder = new MediaRecorder(stream/*, mediaRecorderOptions*/); 
                         this.audioChunks = []; 
                         this.mediaRecorder.addEventListener("dataavailable", event => { 
                             this.audioChunks.push(event.data); 
@@ -50,7 +50,7 @@ var audioRecorder = {
     },
     get: function() { // blob with list of chunks and number of chunks
         let lastChunk = this.audioChunks.length;
-        let blob = new Blob(this.audioChunks/*.slice(this.firstChunk)*/, { type: 'audio/webm' })
+        let blob = new Blob(this.audioChunks.slice(this.firstChunk), { type: 'audio/webm' })
         return {
             'blob': blob,
             'length': lastChunk - this.firstChunk

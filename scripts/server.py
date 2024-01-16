@@ -10,7 +10,7 @@ from flask_cors import CORS  # Import the CORS module
 
 logging.basicConfig(format='[%(asctime)s.%(msecs)03d] %(levelname)s %(message)s', datefmt='%Y-%m-%d_%H:%M:%S', level=getattr(logging, 'INFO', None), filename=None)
 
-device = 'cuda' #cpu or cuda
+device = 'cpu' #cpu or cuda
 HOST = '0.0.0.0'
 PORT = 12345
 

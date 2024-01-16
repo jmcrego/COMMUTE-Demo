@@ -62,6 +62,7 @@ const serverRequest = async () => {
     formData.append('audio', daudio['blob']);
     formData.append('length', daudio['length']);
     console.log(`serverRequest length: ${daudio['length']}, audio: ${daudio['blob']}`);
+    console.log(`serverRequest formData: ${formData}`);
     try {
       const response = await fetch(address, { method: 'POST', body: formData });    
       if (!response.ok) { console.error('Server returned an error:', response.statusText); return; }
