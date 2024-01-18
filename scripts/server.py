@@ -7,7 +7,7 @@ import logging
 logging.basicConfig(format='[%(asctime)s.%(msecs)03d] %(levelname)s %(message)s', datefmt='%Y-%m-%d_%H:%M:%S', level=getattr(logging, 'INFO', None), filename=None)
 
 device = 'cpu' #cpu or cuda
-model_size = 'tiny'
+model_size = 'small'
 Transcriber = WhisperModel(model_size_or_path=model_size, device=device, compute_type='int8')
 ct2 = '/Users/crego/Desktop/COMMUTE-Demo/scripts/model/checkpoint-50000.pt.ct2'
 Translator = ctranslate2.Translator(ct2, device=device)
@@ -21,32 +21,38 @@ import pyaudio
 from pydub import AudioSegment
 import io
 import json
+import av
+import itertools
+import numpy as np
+import gc
 
 ending_suffixes = ['.', '?', '!']
 delay_sec = 0.1  # Adjust this value based on your requirements
-sample_rate = 44100
-bytes_per_sample = 2  # Assuming 16-bit PCM, adjust if different
 distance_to_end = 1
-save_audio_sentences = False
+samples_per_second = 16000 #sample rate in resampler (number of float32 elements per second)
 
-def transcribe(wav_data, lang_src, beam_size=5, history=None, task='transcribe'):
-    #blob_data = blob.Blob(wav_data)#, type='audio/wav')
+def transcribe(data_float32, lang_src, beam_size=5, history=None, task='transcribe'):
+    #bytes_data = io.BytesIO(wav_data) #in-memory binary stream => block of bytes
     language = None if lang_src == 'pr' else lang_src
-    segments, info = Transcriber.transcribe(io.BytesIO(wav_data), language=language, task=task, beam_size=beam_size, vad_filter=True, word_timestamps=True, initial_prompt=history)
-    ending_time = 0
-    eos = False
+    segments, info = Transcriber.transcribe(data_float32, language=language, task=task, beam_size=beam_size, vad_filter=True, word_timestamps=True, initial_prompt=history)
+    ending = 0
     transcription = []
+    ### flatten the words list
+    words = []
     for segment in segments:
-        for i,word in enumerate(segment.words):
-            transcription.append(word.word)
-            logging.info("word\t{}\t{}\t{}".format(word.start,word.end,word.word))
-            if i < len(segment.words)-distance_to_end and any(word.word.endswith(suffix) for suffix in ending_suffixes):
-                eos = True
-                ending_time = word.end
+        for word in segment.words:
+            words.append(word)
+    ### build result
+    for i,word in enumerate(words):
+        transcription.append(word.word)
+        logging.info("word\t{}\t{}\t{}".format(word.start,word.end,word.word))
+        if i < len(words)-distance_to_end and any(word.word.endswith(suffix) for suffix in ending_suffixes):
+            ending = int(word.end*samples_per_second)
+            logging.info('eos found at {:.2f} => {}'.format(word.end, ending))
     lang_src = info.language
     transcription = ''.join(transcription).strip()
-    logging.info('lang_src = {}, eos = {}, transcription = {} ending_time = {}'.format(lang_src, eos, transcription, ending_time))
-    return transcription, eos, lang_src, ending_time*1000
+    logging.info('lang_src = {}, ending = {}, transcription = {}'.format(lang_src, ending, transcription))
+    return transcription, ending, lang_src
 
 def translate(transcription, lang_tgt):
     if lang_tgt == '' or transcription == '':
@@ -58,40 +64,84 @@ def translate(transcription, lang_tgt):
     logging.info('translation = {}'.format(translation))
     return translation
 
+def base64_to_float32(audio_chunk_base64):
+    audio_chunk = base64.b64decode(audio_chunk_base64)
+    audio_bytes = io.BytesIO(audio_chunk) 
+    resampler = av.audio.resampler.AudioResampler(format="s16", layout="mono", rate=samples_per_second)
+    raw_buffer = io.BytesIO()
+    dtype = None
+    with av.open(audio_bytes, mode="r", metadata_errors="ignore") as container:
+        frames = container.decode(audio=0)
+        frames = _ignore_invalid_frames(frames)
+        frames = _group_frames(frames, 500000)
+        frames = _resample_frames(frames, resampler)
+        for frame in frames:
+            array = frame.to_ndarray()
+            dtype = array.dtype
+            raw_buffer.write(array)
+    # It appears that some objects related to the resampler are not freed
+    # unless the garbage collector is manually run.
+    del resampler
+    gc.collect()
+    audio = np.frombuffer(raw_buffer.getbuffer(), dtype=dtype)
+    # Convert s16 back to f32.
+    audio = audio.astype(np.float32) / 32768.0
+    return audio
+
+def _ignore_invalid_frames(frames):
+    iterator = iter(frames)
+
+    while True:
+        try:
+            yield next(iterator)
+        except StopIteration:
+            break
+        except av.error.InvalidDataError:
+            continue
+
+def _group_frames(frames, num_samples=None):
+    fifo = av.audio.fifo.AudioFifo()
+
+    for frame in frames:
+        frame.pts = None  # Ignore timestamp check.
+        fifo.write(frame)
+
+        if num_samples is not None and fifo.samples >= num_samples:
+            yield fifo.read()
+
+    if fifo.samples > 0:
+        yield fifo.read()
+
+def _resample_frames(frames, resampler):
+    # Add None to flush the resampler.
+    for frame in itertools.chain(frames, [None]):
+        yield from resampler.resample(frame)
+
 async def handle_connection(websocket, path):
     p = pyaudio.PyAudio()
-    prefix_wav = b""
+    #prefix_wav = b""
+    prefix = np.empty([1], dtype=np.float32)
 
     try:
         while True:
-
             request_json = await websocket.recv()
             curr_time = time.strftime("%Y-%m-%d_%H:%M:%S")
             request = json.loads(request_json)
-            audio_data_base64 = request.get('audioData', '')
-            nChunk = request.get('nChunk', '')
+            chunk = request.get('audioData', '') #in base64 format as transformed by the client
+            chunkId = request.get('chunkId', '')
             lang_src = request.get('lang_src', '')
             lang_tgt = request.get('lang_tgt', '')
-            logging.info('SERVER: Received nChunk={} lang_src={} lang_tgt={}'.format(nChunk, lang_src, lang_tgt))
+            logging.info('SERVER: Received chunkId={} lang_src={} lang_tgt={}'.format(chunkId, lang_src, lang_tgt))
             ### compose new audio with prefix
-            audio_chunk = base64.b64decode(audio_data_base64)
-            prefix_wav += audio_chunk
+            prefix = np.concatenate((prefix, base64_to_float32(chunk)))
             ### transcript and translate
-            transcription, eos, lang_src, ending_time_ms = transcribe(prefix_wav, lang_src)
+            transcription, ending, lang_src = transcribe(prefix, lang_src)
             translation = translate(transcription, lang_tgt)
-            response_dict = {'transcription': transcription, 'translation': translation, 'eos': eos, 'lang_src': lang_src}
+            response_dict = {'transcription': transcription, 'translation': translation, 'eos': ending>0, 'lang_src': lang_src}
             logging.info('SERVER: Send={}'.format(response_dict))
-            ### update prefix save sentence
-            if eos:
-                desired_bytes = int((ending_time_ms / 1000) * sample_rate * bytes_per_sample)
-                if save_audio_sentences:
-                    file_path = 'audio_{}_{}.wav'.format(nChunk,curr_time)
-                    with open(file_path, 'wb') as file:
-                        file.write(prefix_wav[:desired_bytes])
-                if desired_bytes >= len(prefix_wav):
-                    prefix_wav = b""  # empty prefix audio
-                else:
-                    prefix_wav = prefix_wav[desired_bytes:]
+            ### update prefix if found end of sentence
+            if ending:
+                prefix = prefix[ending:]
 
             await websocket.send(json.dumps(response_dict))
             await asyncio.sleep(delay_sec)
