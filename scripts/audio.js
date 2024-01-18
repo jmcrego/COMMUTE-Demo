@@ -6,28 +6,33 @@ class AudioRecorder{
         this.audioChunks = [];
         this.mediaRecorder = null;
         this.stream = null;
+        this.skipFirst = false;
     }
 
     start(chunk_ms) {
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then((stream) => {
                 this.stream = stream;
-                this.mediaRecorder = new MediaRecorder(stream, {mimeType: 'audio/webm'}); //, channels: 1, audioBitsPerSecond: 16000, audio: true, video: false});
+                this.mediaRecorder = new MediaRecorder(stream, {mimeType: 'audio/webm', channels: 1, audioBitsPerSecond: 16000, audio: true, video: false });
                 this.mediaRecorder.ondataavailable = (event) => { 
                     if (event.data.size > 0) { 
-                        this.audioChunks.push(event.data); 
-                        console.log('audicoChunks length = ',this.audioChunks.length)
+                        if (!this.skipFirst) {
+                            this.audioChunks.push(event.data); 
+                            console.log(`Length audioChunks = ${this.audioChunks.length} `,this.audioChunks[this.audioChunks.length-1]);
+                        }
+                        this.skipFirst = false;
                     } 
                 };
                 this.mediaRecorder.start(chunk_ms); // Collect audio every chunk_ms ms
             })
-            .catch((error) => { console.error('Error accessing microphone:', error); });
+            .catch((error) => console.error('Error accessing microphone:', error));
     }
 
     stop() {
         if (this.mediaRecorder && this.stream) {
             this.mediaRecorder.stop();
             this.stream.getTracks().forEach(track => track.stop());
+            console.log('Stopped AudioRecorder');
         }
     }
 
@@ -36,7 +41,7 @@ class AudioRecorder{
             console.error('Invalid firstChunk position = ',firstChunk); 
             return null; 
         }
-        return this.audioChunks.slice(firstChunk); //.unshift(this.audioChunks[0]);
+        return this.audioChunks.slice(firstChunk);
     }
 
 }
