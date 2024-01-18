@@ -7,7 +7,7 @@ import logging
 logging.basicConfig(format='[%(asctime)s.%(msecs)03d] %(levelname)s %(message)s', datefmt='%Y-%m-%d_%H:%M:%S', level=getattr(logging, 'INFO', None), filename=None)
 
 device = 'cpu' #cpu or cuda
-model_size = 'small' #medium
+model_size = 'tiny' #tiny, small, medium
 Transcriber = WhisperModel(model_size_or_path=model_size, device=device, compute_type='int8')
 ct2 = '/Users/crego/Desktop/COMMUTE-Demo/scripts/model/checkpoint-50000.pt.ct2'
 Translator = ctranslate2.Translator(ct2, device=device)
@@ -30,9 +30,12 @@ ending_suffixes = ['.', '?', '!', '؟']
 delay_sec = 0.1  # Adjust this value based on your requirements
 distance_to_end = 1
 samples_per_second = 16000 #sample rate in resampler (number of float32 elements per second)
+silence_eos_sec = 0.5 #silence duration at the end of prefix to consider end of sentence
+save_file = True
 
 def transcribe(data_float32, lang_src, beam_size=5, history=None, task='transcribe'):
     #bytes_data = io.BytesIO(wav_data) #in-memory binary stream => block of bytes
+    duration_sec = len(data_float32) / samples_per_second
     language = None if lang_src == 'pr' else lang_src
     segments, info = Transcriber.transcribe(data_float32, language=language, task=task, beam_size=beam_size, vad_filter=True, word_timestamps=True, initial_prompt=history)
     lang_src = info.language ### output by model
@@ -50,6 +53,9 @@ def transcribe(data_float32, lang_src, beam_size=5, history=None, task='transcri
         if i < len(words)-distance_to_end and any(word.word.endswith(suffix) for suffix in ending_suffixes):
             ending_word_id = i
             logging.info('eos found at {:.2f} => {}'.format(word.end, int(word.end*samples_per_second)))
+
+    if len(words) and words[-1].end < duration_sec - silence_eos_sec:
+        ending_word_id = len(words) - 1 ### last word
 
     if ending_word_id == -1: ### return all words
         ending = 0
@@ -70,6 +76,24 @@ def translate(transcription, lang_tgt):
     translation = Tokenizer.detokenize(results[0].hypotheses[0])
     logging.info('translation = {}'.format(translation))
     return translation
+
+def float32_to_mp3(numpy_array, output_file, sample_width=2, frame_rate=16000):
+    # Scale float32 values to the range [-1, 1]
+    numpy_array = numpy_array / np.max(np.abs(numpy_array))
+    # Convert float32 array to int16 array
+    int16_array = (numpy_array * 32767).astype(np.int16)
+    # Ensure the length is a multiple of (sample_width * channels)
+    aligned_length = len(int16_array) - (len(int16_array) % sample_width)
+    # Trim or pad the array to the aligned length
+    int16_array = int16_array[:aligned_length]
+    # Create AudioSegment from int16 array
+    audio_segment = AudioSegment(
+        int16_array.tobytes(),
+        sample_width=sample_width,
+        frame_rate=frame_rate,
+        channels=1  # Assuming mono audio
+    )
+    audio_segment.export(output_file, format="mp3")
 
 def base64_to_float32(audio_chunk_base64):
     audio_chunk = base64.b64decode(audio_chunk_base64)
@@ -97,7 +121,6 @@ def base64_to_float32(audio_chunk_base64):
 
 def _ignore_invalid_frames(frames):
     iterator = iter(frames)
-
     while True:
         try:
             yield next(iterator)
@@ -108,14 +131,11 @@ def _ignore_invalid_frames(frames):
 
 def _group_frames(frames, num_samples=None):
     fifo = av.audio.fifo.AudioFifo()
-
     for frame in frames:
         frame.pts = None  # Ignore timestamp check.
         fifo.write(frame)
-
         if num_samples is not None and fifo.samples >= num_samples:
             yield fifo.read()
-
     if fifo.samples > 0:
         yield fifo.read()
 
@@ -148,7 +168,10 @@ async def handle_connection(websocket, path):
             logging.info('SERVER: Send={}'.format(response_dict))
             ### update prefix if found end of sentence
             if ending:
+                if save_file:
+                    float32_to_mp3(prefix, '/Users/crego/Desktop/audio_{}_{}.mp3'.format(chunkId, curr_time))
                 prefix = prefix[ending:]
+
 
             await websocket.send(json.dumps(response_dict))
             await asyncio.sleep(delay_sec)
@@ -159,7 +182,6 @@ async def handle_connection(websocket, path):
         p.terminate()
 
 start_server = websockets.serve(handle_connection, "localhost", 8765)
-
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()
 
