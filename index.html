@@ -8,25 +8,12 @@
   </head>
   <body>
 
-    <!--div class="wrapper"-->
-      <!--header-->
-        <h1><img src="pics/SYSTRAN.png" style="vertical-align:middle; height:60px;"> <img src="pics/LIUM.png" style="vertical-align:middle; height:70px;"> COMMUTE - DEMO</h1>
-        <br>
-        <br>
-      <!--/header-->
-      <!--section class="main-controls"-->
-        <!--canvas class="visualizer" height="40px"></canvas-->
-        <!--div id="buttons"-->
-        <center>
-          <button class="record" style="font-size: 22px; width: 100px; height: 50px;" id="recordButton" onclick="clickRecordButton()">Start</button> <!--🎙-->
-        </center>
-        <!--/div-->
-      <!--/section-->
-    <!--/div-->
-  
-    <!--span style="font-size: 48px; color: Dodgerblue;">
-    <i class="fa-solid fa-camera"></i>
-    </span-->
+    <h1><img src="pics/SYSTRAN.png" style="vertical-align:middle; height:60px;"> <img src="pics/LIUM.png" style="vertical-align:middle; height:70px;"> COMMUTE - DEMO</h1>
+    <br>
+    <br>
+    <center>
+      <button class="record" style="font-size: 22px; width: 100px; height: 50px;" id="recordButton" onclick="clickRecordButton()">Start</button> <!--🎙-->
+    </center>
 
     <table id="tableResults">
       <tr>
@@ -56,22 +43,8 @@
       <!--tr>
         <td class="cellcontent"></td>
         <td class="cellcontent"></td>
-      </tr>
-      <tr>
-        <td class="cellcontent"><en></en> This is my example.</td>
-        <td class="cellcontent">Ceci est mon exemple.</td>
-      </tr>
-      <tr>
-        <td class="cellcontent"><ar></ar> إن المكان يبدو رائعا</td>
-        <td class="cellcontent">Ceci est mon exemple.</td>
       </tr-->
     </table>
-
-    <p id="result_transcription"></p>
-    <p id="result_translation"></p>
-
-
-
 
     <label for="toggle">&nbsp;&nbsp;🛠&nbsp;&nbsp;</label>
     <input type="checkbox" id="toggle">
@@ -96,7 +69,7 @@
             <p> ➠ Les clients tournent sur un navigateur web et transmettent des enregistrements audio au serveur à intervalles réguliers.</p>
             <p> ➠ Le serveur attend les requêtes des clients (audio) et répond avec les transcriptions et traductions des signals reçus.</p>
             <p>&nbsp;&nbsp;&nbsp; • Serveur ip: <input type="text" style="width:110px;" value="10.25.0.229" id="IP"> port: <input type="text" style="width:50px;" value="12345" id="PORT"> route: <input type="text" style="width:150px;" value="/pipeline_asr_mt" id="ROUTE"></p>
-            <p>&nbsp;&nbsp;&nbsp; • Sauvegarder des morceaux d'audio tous les <input type="number" style="width:50px;" value="100"  min="100" max="1000" id="chunk_ms"> millisecondes [100-1000].</p>
+            <p>&nbsp;&nbsp;&nbsp; • Sauvegarder des morceaux d'audio tous les <input type="number" style="width:50px;" value="500"  min="100" max="1000" id="chunk_ms"> millisecondes [100-1000].</p>
             <p>&nbsp;&nbsp;&nbsp; • Requête au serveur tous les <input type="number" style="width:50px;" value="2000" min="500" max="5000" id="delay_ms"> millisecondes [500-5000].</p>
           </td>
         </tr>
@@ -116,8 +89,6 @@
         </tr>
       </table>
     </aside>
-
-    <script src="scripts/audio.js"></script>
     <script src="scripts/app.js"></script>
     <!--script src="scripts/visualize.js"></script-->
 
