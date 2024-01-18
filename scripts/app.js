@@ -1,17 +1,16 @@
 
+let mediaRecorder;
+let websocket;
 let tableResults = document.getElementById("tableResults");
 let recordButton = document.getElementById("recordButton");
 let delay_ms = document.getElementById("delay_ms");
-let startPromise = null;
 let lang_src = 'pr';
 let lang_tgt = 'fr';
 let intervalId = 0;
-let firstChunk = 0;
+let nChunk;
 const curr_date = getDate();
 document.getElementById("transcript_pr").style.backgroundColor = 'LightGrey';
 document.getElementById("translate_fr").style.backgroundColor = 'LightBlue';
-
-const audioRec = new AudioRecorder();
 
 function changeTranscription(cellId) {
   document.getElementById("transcript_pr").style.backgroundColor = 'transparent';
@@ -39,35 +38,78 @@ function clickRecordButton(){
   if (recordButton.innerHTML == "Start"){ //start recording
     recordButton.innerHTML = "Stop";
     recordButton.style.backgroundColor = "DarkRed";
-    audioRec.start(chunk_ms.value) // Start recording with a delay of delay_ms milliseconds
-    intervalId = setInterval(() => serverRequest(), delay_ms.value); //call serverRequest every delay_ms milliseconds
-    console.log(`Recording started delay_ms = ${delay_ms.value} chunk_ms = ${chunk_ms.value}`);
+    startRecording();
   }
   else { //stop recording
     recordButton.innerHTML = "Start";    
     recordButton.style.backgroundColor = "DarkBlue"; //"#0088cc";
-    audioRec.stop(); 
-    console.log('Recording stopped successfully.');
-    if (intervalId > 0) { 
-      clearInterval(intervalId); 
-    }
+    stopRecording();
   }
+}
+
+async function startRecording() {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  nChunk = 0;
+  mediaRecorder = new MediaRecorder(stream);
+
+  mediaRecorder.ondataavailable = (event) => {
+    if (event.data.size > 0) {
+      const audioBlob = new Blob([event.data], { type: 'audio/wav' });
+      const audioReader = new FileReader();
+      audioReader.onloadend = () => {
+        const audioData = audioReader.result.split(',')[1];
+        const dataToSend = { audioData, nChunk, lang_src, lang_tgt };
+        console.log('CLIENT Send nChunk=',nChunk);
+        websocket.send(JSON.stringify(dataToSend));
+        nChunk++;
+      };
+      audioReader.readAsDataURL(audioBlob);
+    }
+  };
+
+  // Open WebSocket connection
+  websocket = new WebSocket('ws://localhost:8765');
+  websocket.onopen = (event) => { console.log('CLIENT connection opened.'); };
+  websocket.onclose = (event) => { console.log('CLIENT connection closed.'); };
+  websocket.onmessage = (event) => { 
+    const responseData = JSON.parse(event.data);
+    console.log('CLIENT Received=',responseData);
+    updateResults(responseData);
+  };
+
+  // Start recording
+  mediaRecorder.start();
+
+  // stop/restart mediaRecorder to force ondataavailable event (send request to server) every delay_ms milliseconds
+  intervalId = setInterval(() => {
+    if (mediaRecorder.state === 'recording') { 
+      mediaRecorder.stop(); 
+      mediaRecorder.start(); 
+    }
+  }, delay_ms.value);
+}
+
+function stopRecording() {
+  clearInterval(intervalId);
+  mediaRecorder.stop();
 }
 
 const serverRequest = async () => {
   if (audioRec.audioChunks.length > 0){
     const address = 'http://' + document.getElementById('IP').value + ':' + document.getElementById('PORT').value + document.getElementById('ROUTE').value;
     const slicedAudioChunks = audioRec.get(firstChunk);
-    if (slicedAudioChunks != null && slicedAudioChunks.length > 3) {
-      const blob = new Blob([slicedAudioChunks], { type: 'audio/webm' })
+    if (slicedAudioChunks != null && slicedAudioChunks.length >= delay_ms.value/chunk_ms.value) {      
+      const blob = new Blob(slicedAudioChunks, { type: slicedAudioChunks[0].type })
       saveBlob(blob, `audio_${curr_date}_fromChunk-${firstChunk}-len-${slicedAudioChunks.length}`);
+      console.log(`serverRequest audio: ${blob}, Blob size: ${blob.size}, firstChunk: ${firstChunk} nChunks: ${slicedAudioChunks.length}`);
+      firstChunk += slicedAudioChunks.length;
+      console.log(`firstChunk moved to: ${firstChunk}`);
       const formData = new FormData();
       formData.append('lang_src', lang_src);
       formData.append('lang_tgt', lang_tgt);
       formData.append('audio', blob);
       formData.append('firstChunk', firstChunk);
       formData.append('nChunks', slicedAudioChunks.length);
-      console.log(`serverRequest audio: ${blob}, Blob size: ${blob.size}, firstChunk: ${firstChunk} nChunks: ${slicedAudioChunks.length}`);
       try {
         const response = await fetch(address, { method: 'POST', body: formData });    
         if (!response.ok) { console.error('Server returned an error:', response.statusText); return; }
@@ -79,16 +121,15 @@ const serverRequest = async () => {
   }
 }
 
-function updateResults(data){
-  console.log('updateResults Data:', data);
+function updateResults(responseData){
+  const { transcription, translation, eos, lang_src } = responseData;
+  console.log('updateResults Data:', responseData);
   if (tableResults.rows.length == 1) { insertNewSecondRow(); }
   var firstCell = tableResults.rows[1].cells[0];
   var secondCell = tableResults.rows[1].cells[1];    
-  firstCell.innerHTML = langTag(data.lang_src) + ' ' + data.transcription;
-  secondCell.innerHTML = langTag(data.lang_tgt) + ' ' + data.translation;
-  if (data.firstChunk > firstChunk) { //end of sentence (add new row for the remaining requests) 
-    firstChunk = data.firstChunk;
-    console.log(`firstChunk is now ${firstChunk}`);
+  firstCell.innerHTML = langTag(lang_src) + ' ' + transcription;
+  secondCell.innerHTML = langTag(lang_tgt) + ' ' + translation;
+  if (eos) { //end of sentence (add new row for the remaining requests) 
     insertNewSecondRow()
   }
 }
@@ -111,28 +152,6 @@ function langTag(l){
   else {return '<xx></xx>';}
 }
 
-function playBlob(blob) {
-  if (blob.nchunks > 0){
-    const audio = new Audio();
-    const url = URL.createObjectURL(blob.audio);
-    audio.src = url;
-    audio.play()
-      .then(() => { console.log("Audio playback started successfully."); })
-      .catch(error => { console.error("Error playing audio:", error.message); })
-      .finally(() => { URL.revokeObjectURL(url); }); // Clean up after playback is finished
-  }
-}
-
-function saveBlob(blob, name) {
-  //const audioElement = new Audio(URL.createObjectURL(blob));
-  console.log('AUDIO Blob:', blob);
-  // Example: save the blob as a file
-  const downloadLink = document.createElement('a');
-  downloadLink.href = URL.createObjectURL(blob);
-  downloadLink.download = name+'.webm';
-  downloadLink.click();   
-}
-
 function getDate(){
   // Create a new Date object
   const currentDate = new Date();
@@ -148,4 +167,6 @@ function getDate(){
   const time = `${hours < 10 ? '0' : ''}${hours}-${minutes < 10 ? '0' : ''}${minutes}-${seconds < 10 ? '0' : ''}${seconds}`; 
   return date + '@' + time; 
 }
+
+
 
