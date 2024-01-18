@@ -35,7 +35,8 @@ def transcribe(data_float32, lang_src, beam_size=5, history=None, task='transcri
     #bytes_data = io.BytesIO(wav_data) #in-memory binary stream => block of bytes
     language = None if lang_src == 'pr' else lang_src
     segments, info = Transcriber.transcribe(data_float32, language=language, task=task, beam_size=beam_size, vad_filter=True, word_timestamps=True, initial_prompt=history)
-    ending = 0
+    lang_src = info.language ### output by model
+    ending_word_id = -1
     transcription = []
     ### flatten the words list
     words = []
@@ -47,10 +48,16 @@ def transcribe(data_float32, lang_src, beam_size=5, history=None, task='transcri
         transcription.append(word.word)
         logging.info("word\t{}\t{}\t{}".format(word.start,word.end,word.word))
         if i < len(words)-distance_to_end and any(word.word.endswith(suffix) for suffix in ending_suffixes):
-            ending = int(word.end*samples_per_second)
-            logging.info('eos found at {:.2f} => {}'.format(word.end, ending))
-    lang_src = info.language
-    transcription = ''.join(transcription).strip()
+            ending_word_id = i
+            logging.info('eos found at {:.2f} => {}'.format(word.end, int(word.end*samples_per_second)))
+
+    if ending_word == -1: ### return all words
+        ending = 0
+        transcription = ''.join(transcription).strip()
+    else: ### return words up to ending_word
+        ending = int(words[ending_word].end*samples_per_second)
+        transcription = ''.join(transcription[:ending_word+1]).strip()
+
     logging.info('lang_src = {}, ending = {}, transcription = {}'.format(lang_src, ending, transcription))
     return transcription, ending, lang_src
 
