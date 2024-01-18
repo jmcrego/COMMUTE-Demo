@@ -7,7 +7,7 @@ import logging
 logging.basicConfig(format='[%(asctime)s.%(msecs)03d] %(levelname)s %(message)s', datefmt='%Y-%m-%d_%H:%M:%S', level=getattr(logging, 'INFO', None), filename=None)
 
 device = 'cpu' #cpu or cuda
-model_size = 'small'
+model_size = 'small' #medium
 Transcriber = WhisperModel(model_size_or_path=model_size, device=device, compute_type='int8')
 ct2 = '/Users/crego/Desktop/COMMUTE-Demo/scripts/model/checkpoint-50000.pt.ct2'
 Translator = ctranslate2.Translator(ct2, device=device)
@@ -26,7 +26,7 @@ import itertools
 import numpy as np
 import gc
 
-ending_suffixes = ['.', '?', '!']
+ending_suffixes = ['.', '?', '!', '؟']
 delay_sec = 0.1  # Adjust this value based on your requirements
 distance_to_end = 1
 samples_per_second = 16000 #sample rate in resampler (number of float32 elements per second)
@@ -51,12 +51,12 @@ def transcribe(data_float32, lang_src, beam_size=5, history=None, task='transcri
             ending_word_id = i
             logging.info('eos found at {:.2f} => {}'.format(word.end, int(word.end*samples_per_second)))
 
-    if ending_word == -1: ### return all words
+    if ending_word_id == -1: ### return all words
         ending = 0
         transcription = ''.join(transcription).strip()
-    else: ### return words up to ending_word
-        ending = int(words[ending_word].end*samples_per_second)
-        transcription = ''.join(transcription[:ending_word+1]).strip()
+    else: ### return words up to ending_word_id
+        ending = int(words[ending_word_id].end*samples_per_second)
+        transcription = ''.join(transcription[:ending_word_id+1]).strip()
 
     logging.info('lang_src = {}, ending = {}, transcription = {}'.format(lang_src, ending, transcription))
     return transcription, ending, lang_src
