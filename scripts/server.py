@@ -18,10 +18,14 @@ def parse_transcription(segments, duration):
     words = [w for s in segments for w in s.words]
     ending_word_id = -1
     transcription = []
+    curr_suffixes = suffixes
+    if duration > 3.0 :
+        curr_suffixes.append(',')
+        curr_suffixes.append('،')
     for i,word in enumerate(words):
         transcription.append(word.word)
         logging.debug("word\t{}\t{}\t{}".format(word.start,word.end,word.word))
-        if i < len(words)-distance and any(word.word.endswith(suffix) for suffix in suffixes):
+        if i < len(words)-distance and any(word.word.endswith(suffix) for suffix in curr_suffixes):
             ending_word_id = i
             logging.debug('eos found at {:.2f} => {}'.format(word.end, int(word.end*samples_per_second)))
 
@@ -97,7 +101,7 @@ async def handle_connection(websocket, path):
                 if save is not None:
                     ### save audio ###
                     tic = time.time()
-                    float32_to_mp3(audio, '{}/{}_{}.mp3'.format(save, curr_time, chunkId))
+                    float32_to_mp3(audio, save, '{}_{}.mp3'.format(curr_time, chunkId))
                     time_save = time.time() - tic
                 ### reduce audio ###
                 audio = audio[ending:]
@@ -112,7 +116,7 @@ async def handle_connection(websocket, path):
             await asyncio.sleep(args.delay)
 
     except websockets.ConnectionClosed:
-        print("Connection closed.")
+        logging.info("connection terminated")
     finally:
         p.terminate()
 
@@ -145,18 +149,19 @@ if __name__ == '__main__':
         datefmt='%Y-%m-%d_%H:%M:%S', 
         level=getattr(logging, args.log, None), 
         filename='./log.{}'.format(curr_time) if args.logf else None)
-    
+
+    ### Global vars    
     Transcriber = WhisperModel(model_size_or_path=args.model_size, device=args.device, compute_type=args.compute_type)
     Translator = ctranslate2.Translator(args.ct2_dir, device=args.device)
     Tokenizer = pyonmttok.Tokenizer("aggressive", joiner_annotate=True, preserve_placeholders=True, bpe_model_path=args.bpe_file)
-
-    samples_per_second = 16000 #sample rate to use when converting audio files to float32 list
+    samples_per_second = 16000 #sample rate to use when converting audio files to float32 list for Whisper processing
     suffixes = [letter for letter in args.suffixes]
-    delay = args.delay  # Adjust this value based on your requirements
+    delay = args.delay
     distance = args.distance
     silence = args.silence
-    save = args.save.rstrip('\\')
+    save = args.save
 
+    ### run Server
     start_server = websockets.serve(handle_connection, "localhost", 8765)
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()

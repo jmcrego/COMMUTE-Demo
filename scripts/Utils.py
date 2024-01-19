@@ -5,8 +5,11 @@ import base64
 import av
 import gc
 import io
+import os
 
-def float32_to_mp3(numpy_array, output_file, sample_width=2, frame_rate=16000):
+def float32_to_mp3(numpy_array, output_dir, output_file, sample_width=2, frame_rate=16000):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
     # Scale float32 values to the range [-1, 1]
     numpy_array = numpy_array / np.max(np.abs(numpy_array))
     # Convert float32 array to int16 array
@@ -22,7 +25,7 @@ def float32_to_mp3(numpy_array, output_file, sample_width=2, frame_rate=16000):
         frame_rate=frame_rate,
         channels=1  # Assuming mono audio
     )
-    audio_segment.export(output_file, format="mp3")
+    audio_segment.export(os.path.join(output_dir, output_file), format="mp3")
 
 def base64_to_float32(audio_chunk_base64, samples_per_second=16000):
     audio_chunk = base64.b64decode(audio_chunk_base64)
