@@ -1,54 +1,37 @@
 import sys
-import time
-from datetime import datetime
-import logging
-import pyonmttok
-import ctranslate2
-from faster_whisper import WhisperModel
-# (from more to less verbose) TRACE, DEBUG, INFO, WARN, ERROR, FATAL
-logging.basicConfig(format='[%(asctime)s.%(msecs)03d] %(levelname)s %(message)s', datefmt='%Y-%m-%d_%H:%M:%S', level=getattr(logging, 'INFO', None), filename='log.demo')
-curr_time = datetime.utcnow().isoformat(sep='_', timespec='milliseconds') #time.strftime("%Y-%m-%d_%H:%M:%S")
-
-device = 'cpu' #cpu or cuda
-model_size = 'base' #tiny, base, small, medium
-Transcriber = WhisperModel(model_size_or_path=model_size, device=device, compute_type='int8')
-ct2 = '/Users/crego/Desktop/COMMUTE-Demo/scripts/model/checkpoint-50000.pt.ct2'
-Translator = ctranslate2.Translator(ct2, device=device)
-bpe = '/Users/crego/Desktop/COMMUTE-Demo/scripts/model/bpe-ar-en-fr-50k'
-Tokenizer = pyonmttok.Tokenizer("aggressive", joiner_annotate=True, preserve_placeholders=True, bpe_model_path=bpe)
-
-ending_suffixes = ['.', '?', '!', '؟']
-delay_sec = 0.05  # Adjust this value based on your requirements
-distance_to_end = 1
-samples_per_second = 16000 #sample rate in resampler (number of float32 elements per second)
-silence_eos_sec = 0.5 #silence duration at the end of audio to consider end of sentence
-save_file = True
 import json
+import time
 import asyncio
 import pyaudio
+import logging
+import argparse
+import pyonmttok
 import websockets
 import numpy as np
+import ctranslate2
+from datetime import datetime
+from faster_whisper import WhisperModel
 from Utils import *
 
-def parse_transcription(segments, duration_sec):
+samples_per_second = 16000 #sample rate to use when converting audio files to float32 list
+
+def parse_transcription(segments, duration):
     ### flatten the words list
     words = [w for s in segments for w in s.words]
-#    words = []
-#    for segment in segments:
-#        for word in segment.words:
-#            words.append(word)
     ending_word_id = -1
     transcription = []
     for i,word in enumerate(words):
         transcription.append(word.word)
         logging.debug("word\t{}\t{}\t{}".format(word.start,word.end,word.word))
-        if i < len(words)-distance_to_end and any(word.word.endswith(suffix) for suffix in ending_suffixes):
+        if i < len(words)-distance and any(word.word.endswith(suffix) for suffix in suffixes):
             ending_word_id = i
             logging.debug('eos found at {:.2f} => {}'.format(word.end, int(word.end*samples_per_second)))
 
-    if len(words) and words[-1].end < duration_sec - silence_eos_sec:
+    if len(words) and words[-1].end < duration - silence:
         ending_word_id = len(words) - 1 ### last word
+        logging.debug('eos predicted with ending silence = {} max silence duration = {}'.format(duration - words[-1].end, silence))
 
+    logging.debug('transcription (complete) = {}'.format(''.join(transcription).strip()))
     if ending_word_id == -1: ### return all words
         ending = 0
         transcription = ''.join(transcription).strip()
@@ -72,7 +55,7 @@ def translate(transcription, lang_tgt):
     input_stream = "｟" + lang_tgt + "｠" + " " + transcription
     results = Translator.translate_batch([Tokenizer(input_stream)])
     translation = Tokenizer.detokenize(results[0].hypotheses[0])
-    logging.info('SERVER translation = {}'.format(translation))
+    logging.info('SERVER: translation = {}'.format(translation))
     return translation
 
 def request_data(request_json):
@@ -82,7 +65,7 @@ def request_data(request_json):
     chunkId = request.get('chunkId', -1)
     lang_src = request.get('lang_src', 'pr')
     lang_tgt = request.get('lang_tgt', '')
-    logging.info('SERVER: Received chunkId={} lang_src={} lang_tgt={}'.format(chunkId, lang_src, lang_tgt))
+    logging.debug('SERVER: received chunkId={} lang_src={} lang_tgt={}'.format(chunkId, lang_src, lang_tgt))
     return timestamp, chunk, chunkId, lang_src, lang_tgt
 
 async def handle_connection(websocket, path):
@@ -109,29 +92,74 @@ async def handle_connection(websocket, path):
             time_translate = time.time() - tic
             ### response ###
             response_dict = {'transcription': transcription, 'translation': translation, 'eos': ending>0, 'lang_src': lang_src}
-            logging.info('SERVER: Send={}'.format(response_dict))
-            ### update audio if found end of sentence
+            logging.debug('SERVER: send={}'.format(response_dict))
+            ### update audio if found EndOfSentence
             time_save = 0
             if ending:
-                if save_file:
+                if save:
                     ### save audio ###
                     tic = time.time()
                     float32_to_mp3(audio, '/Users/crego/Desktop/audio_{}_{}.mp3'.format(curr_time, chunkId))
                     time_save = time.time() - tic
                 ### reduce audio ###
                 audio = audio[ending:]
-            logging.info('SERVER: messg delay={:.2f}, audio format={:.2f}, audio duration={:.2f}, transcription={:.2f}, tanslation={:.2f}, save={:.2f} (seconds)'.format(time_request_delay, time_formatting, duration, time_transcribe, time_translate, time_save))
+            logging.info('SERVER: messg delay={:.2f}, audio format={:.2f}, audio duration={:.2f}, transcription={:.2f}, tanslation={:.2f}, save={:.2f} (seconds)'.format(
+                time_request_delay, 
+                time_formatting, 
+                duration, 
+                time_transcribe, 
+                time_translate, 
+                time_save))
             await websocket.send(json.dumps(response_dict))
-            await asyncio.sleep(delay_sec)
+            await asyncio.sleep(args.delay)
 
     except websockets.ConnectionClosed:
         print("Connection closed.")
     finally:
         p.terminate()
 
-start_server = websockets.serve(handle_connection, "localhost", 8765)
-asyncio.get_event_loop().run_until_complete(start_server)
-asyncio.get_event_loop().run_forever()
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description='COMMUTE DEMO Server.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    asr_model = parser.add_argument_group("ASR model")
+    asr_model.add_argument('--model_size', type=str, help='Model size (tiny.en, tiny, base.en, base, small.en, small, medium.en, medium, large-v1, large-v2)', default='tiny')
+    asr_model.add_argument('--compute_type', type=str, help='Compute type', default='int8')
+    nmt_model = parser.add_argument_group("NMT model")
+    nmt_model.add_argument('--ct2_dir', type=str, help='ct2 checkpoint dir', default='./model/checkpoint-50000.pt.ct2')
+    nmt_model.add_argument('--bpe_file', type=str, help='BPE file', default='./model/bpe-ar-en-fr-50k')
+    eos_opts = parser.add_argument_group("EndOfSentence prediction")
+    eos_opts.add_argument('--suffixes', type=str, help='String with ending suffixes for a word to be considered as EndOfSentence.', default='.?!؟')
+    eos_opts.add_argument('--distance', type=int, help='Distance (number of words) to last word in audio to consider a word as EndOfSentence.', default=1)
+    eos_opts.add_argument('--silence', type=float, help='Duration (seconds) after last word in audio to consider the last word as EndOfSentence.', default=1.0)
+    other = parser.add_argument_group("Other options")
+    other.add_argument('--save', action='store_true', help='Save audio files with segmented sentences.')
+    other.add_argument('--delay', type=float, help='Delay between requests.', default=0.05)
+    other.add_argument('--port', type=int, help='Port used in local server', default=8765)
+    other.add_argument('--device', type=str, help='Device: cpu, cuda, auto', default='auto')
+    other.add_argument('--log', type=str, help='Logging level: TRACE, DEBUG, INFO, WARN, ERROR, FATAL', default='INFO')
+    other.add_argument('--logf', type=str, help='Logging file', default=None)
+    args = parser.parse_args()
+
+    #curr_time = datetime.utcnow().isoformat(sep='_', timespec='milliseconds')
+    curr_time = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+    logging.basicConfig(format='[%(asctime)s.%(msecs)03d] %(levelname)s %(message)s', 
+        datefmt='%Y-%m-%d_%H:%M:%S', 
+        level=getattr(logging, args.log, None), 
+        filename='./log.{}'.format(curr_time) if args.logf else None)
+    Transcriber = WhisperModel(model_size_or_path=args.model_size, device=args.device, compute_type=args.compute_type)
+    Tokenizer = pyonmttok.Tokenizer("aggressive", joiner_annotate=True, preserve_placeholders=True, bpe_model_path=args.bpe_file)
+    Translator = ctranslate2.Translator(args.ct2_dir, device=args.device)
+
+    suffixes = [letter for letter in args.suffixes]
+    delay = args.delay  # Adjust this value based on your requirements
+    distance = args.distance
+    silence = args.silence
+    save = args.save
+
+    start_server = websockets.serve(handle_connection, "localhost", 8765)
+    asyncio.get_event_loop().run_until_complete(start_server)
+    asyncio.get_event_loop().run_forever()
 
 
 
