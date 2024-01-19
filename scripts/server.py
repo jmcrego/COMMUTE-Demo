@@ -13,42 +13,39 @@ from datetime import datetime
 from faster_whisper import WhisperModel
 from Utils import *
 
-def parse_transcription(segments, duration):
+def parse_transcription(segments, audio_duration):
     ### flatten the words list
     words = [w for s in segments for w in s.words]
     ending_word_id = -1
     transcription = []
-    curr_suffixes = suffixes
-    if duration > 3.0 :
-        curr_suffixes.append(',')
-        curr_suffixes.append('،')
     for i,word in enumerate(words):
         transcription.append(word.word)
         logging.debug("word\t{}\t{}\t{}".format(word.start,word.end,word.word))
-        if i < len(words)-distance and any(word.word.endswith(suffix) for suffix in curr_suffixes):
+        if i < len(words)-distance and any(word.word.endswith(suffix) for suffix in suffixes):
             ending_word_id = i
             logging.debug('eos found at {:.2f} => {}'.format(word.end, int(word.end*samples_per_second)))
 
-    if len(words) and words[-1].end < duration - silence:
+    if len(words) and words[-1].end < audio_duration - silence:
         ending_word_id = len(words) - 1 ### last word
-        logging.debug('eos predicted with ending silence = {} max silence duration = {}'.format(duration - words[-1].end, silence))
+        logging.debug('eos predicted with ending silence = {} max silence duration = {}'.format(audio_duration - words[-1].end, silence))
+
+    if ending_word_id == -1 and audio_duration > duration: ### force ending
+        ending_word_id = len(words) - 1 ### last word
+        logging.debug('eos predicted with audio duration = {} max audio duration = {}'.format(audio_duration, duration))
 
     logging.debug('transcription (complete) = {}'.format(''.join(transcription).strip()))
-    if ending_word_id == -1: ### return all words
-        ending = 0
-        transcription = ''.join(transcription).strip()
-    else: ### return words up to ending_word_id
-        ending = int(words[ending_word_id].end*samples_per_second)
-        transcription = ''.join(transcription[:ending_word_id+1]).strip()
-    return transcription, ending
+    if ending_word_id == -1: ### return all words, ending is 0
+        return ''.join(transcription).strip(), 0
+    ### return words up to ending_word_id and corresponding ending
+    return ''.join(transcription[:ending_word_id+1]).strip(), int(words[ending_word_id].end*samples_per_second)
 
 def transcribe(data_float32, lang_src, beam_size=5, history=None, task='transcribe'):
     language = None if lang_src == 'pr' else lang_src
-    duration = len(data_float32)/samples_per_second
+    audio_duration = len(data_float32)/samples_per_second
     segments, info = Transcriber.transcribe(data_float32, language=language, task=task, beam_size=beam_size, vad_filter=True, word_timestamps=True, initial_prompt=history)
-    transcription, ending = parse_transcription(segments, duration)
+    transcription, ending = parse_transcription(segments, audio_duration)
     logging.info('SERVER: transcription lang_src = {}, ending = {}, transcription = {}'.format(info.language, ending, transcription))
-    return duration, transcription, ending, info.language
+    return audio_duration, transcription, ending, info.language
 
 def translate(transcription, lang_tgt):
     if lang_tgt == '' or transcription == '':
@@ -86,7 +83,7 @@ async def handle_connection(websocket, path):
             time_formatting = time.time() - tic
             ### transcribe ###
             tic = time.time()
-            duration, transcription, ending, lang_src = transcribe(audio, lang_src)
+            audio_duration, transcription, ending, lang_src = transcribe(audio, lang_src)
             time_transcribe = time.time() - tic
             ### translate ###
             tic = time.time()
@@ -108,7 +105,7 @@ async def handle_connection(websocket, path):
             logging.info('SERVER: messg delay={:.2f}, audio format={:.2f}, audio duration={:.2f}, transcription={:.2f}, tanslation={:.2f}, save={:.2f} (seconds)'.format(
                 time_request_delay, 
                 time_formatting, 
-                duration, 
+                audio_duration, 
                 time_transcribe, 
                 time_translate, 
                 time_save))
@@ -133,7 +130,8 @@ if __name__ == '__main__':
     eos_opts = parser.add_argument_group("EndOfSentence prediction")
     eos_opts.add_argument('--suffixes', type=str, help='String with ending suffixes for a word to be considered as EndOfSentence.', default='.?!؟')
     eos_opts.add_argument('--distance', type=int, help='Distance (number of words) to last word in audio to consider a word as EndOfSentence.', default=1)
-    eos_opts.add_argument('--silence', type=float, help='Duration (seconds) after last word in audio to consider the last word as EndOfSentence.', default=1.0)
+    eos_opts.add_argument('--silence', type=float, help='Maximum silent duration (seconds) after last word to predict EndOfSentence.', default=2.0)
+    eos_opts.add_argument('--duration', type=float, help='Maximum audio duration (seconds) to predict EndOfSentence.', default=15.0)
     other = parser.add_argument_group("Other options")
     other.add_argument('--save', type=str, help='Directory where to save audio files with segmented sentences.', default=None)
     other.add_argument('--delay', type=float, help='Delay between requests.', default=0.05)
@@ -159,6 +157,7 @@ if __name__ == '__main__':
     delay = args.delay
     distance = args.distance
     silence = args.silence
+    duration = args.duration
     save = args.save
 
     ### run Server
