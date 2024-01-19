@@ -148,7 +148,7 @@ if __name__ == '__main__':
     logging.basicConfig(format='[%(asctime)s.%(msecs)03d] %(levelname)s %(message)s', 
         datefmt='%Y-%m-%d_%H:%M:%S', 
         level=getattr(logging, args.log, None), 
-        filename='./log.{}'.format(curr_time) if args.logf else None)
+        filename=args.logf)
 
     ### Global vars    
     Transcriber = WhisperModel(model_size_or_path=args.model_size, device=args.device, compute_type=args.compute_type)
