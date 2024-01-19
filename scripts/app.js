@@ -54,11 +54,12 @@ async function startRecording() {
   mediaRecorder = new MediaRecorder(stream);
   mediaRecorder.ondataavailable = (event) => {
     if (event.data.size > 0) {
+      const timestamp = Date.now();
       const audioBlob = new Blob([event.data], { type: 'audio/wav' });
       const audioReader = new FileReader();
       audioReader.onloadend = () => {
         const audioData = audioReader.result.split(',')[1];
-        const dataToSend = { audioData, chunkId, lang_src, lang_tgt };
+        const dataToSend = { audioData, chunkId, lang_src, lang_tgt, timestamp };
         console.log(`CLIENT Send chunkId=${chunkId} size=${audioBlob.size}`);
         websocket.send(JSON.stringify(dataToSend));
         chunkId++;

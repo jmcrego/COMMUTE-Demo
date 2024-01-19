@@ -1,58 +1,50 @@
 import sys
+import time
+from datetime import datetime
+import logging
+import pyonmttok
 import ctranslate2
 from faster_whisper import WhisperModel
-import pyonmttok
-import time
-import logging
-logging.basicConfig(format='[%(asctime)s.%(msecs)03d] %(levelname)s %(message)s', datefmt='%Y-%m-%d_%H:%M:%S', level=getattr(logging, 'INFO', None), filename=None)
+# (from more to less verbose) TRACE, DEBUG, INFO, WARN, ERROR, FATAL
+logging.basicConfig(format='[%(asctime)s.%(msecs)03d] %(levelname)s %(message)s', datefmt='%Y-%m-%d_%H:%M:%S', level=getattr(logging, 'INFO', None), filename='log.demo')
+curr_time = datetime.utcnow().isoformat(sep='_', timespec='milliseconds') #time.strftime("%Y-%m-%d_%H:%M:%S")
 
 device = 'cpu' #cpu or cuda
-model_size = 'tiny' #tiny, small, medium
+model_size = 'base' #tiny, base, small, medium
 Transcriber = WhisperModel(model_size_or_path=model_size, device=device, compute_type='int8')
 ct2 = '/Users/crego/Desktop/COMMUTE-Demo/scripts/model/checkpoint-50000.pt.ct2'
 Translator = ctranslate2.Translator(ct2, device=device)
 bpe = '/Users/crego/Desktop/COMMUTE-Demo/scripts/model/bpe-ar-en-fr-50k'
 Tokenizer = pyonmttok.Tokenizer("aggressive", joiner_annotate=True, preserve_placeholders=True, bpe_model_path=bpe)
 
-import asyncio
-import websockets
-import base64
-import pyaudio
-from pydub import AudioSegment
-import io
-import json
-import av
-import itertools
-import numpy as np
-import gc
-
 ending_suffixes = ['.', '?', '!', '؟']
-delay_sec = 0.1  # Adjust this value based on your requirements
+delay_sec = 0.05  # Adjust this value based on your requirements
 distance_to_end = 1
 samples_per_second = 16000 #sample rate in resampler (number of float32 elements per second)
-silence_eos_sec = 0.5 #silence duration at the end of prefix to consider end of sentence
+silence_eos_sec = 0.5 #silence duration at the end of audio to consider end of sentence
 save_file = True
+import json
+import asyncio
+import pyaudio
+import websockets
+import numpy as np
+from Utils import *
 
-def transcribe(data_float32, lang_src, beam_size=5, history=None, task='transcribe'):
-    #bytes_data = io.BytesIO(wav_data) #in-memory binary stream => block of bytes
-    duration_sec = len(data_float32) / samples_per_second
-    language = None if lang_src == 'pr' else lang_src
-    segments, info = Transcriber.transcribe(data_float32, language=language, task=task, beam_size=beam_size, vad_filter=True, word_timestamps=True, initial_prompt=history)
-    lang_src = info.language ### output by model
+def parse_transcription(segments, duration_sec):
+    ### flatten the words list
+    words = [w for s in segments for w in s.words]
+#    words = []
+#    for segment in segments:
+#        for word in segment.words:
+#            words.append(word)
     ending_word_id = -1
     transcription = []
-    ### flatten the words list
-    words = []
-    for segment in segments:
-        for word in segment.words:
-            words.append(word)
-    ### build result
     for i,word in enumerate(words):
         transcription.append(word.word)
-        logging.info("word\t{}\t{}\t{}".format(word.start,word.end,word.word))
+        logging.debug("word\t{}\t{}\t{}".format(word.start,word.end,word.word))
         if i < len(words)-distance_to_end and any(word.word.endswith(suffix) for suffix in ending_suffixes):
             ending_word_id = i
-            logging.info('eos found at {:.2f} => {}'.format(word.end, int(word.end*samples_per_second)))
+            logging.debug('eos found at {:.2f} => {}'.format(word.end, int(word.end*samples_per_second)))
 
     if len(words) and words[-1].end < duration_sec - silence_eos_sec:
         ending_word_id = len(words) - 1 ### last word
@@ -63,9 +55,15 @@ def transcribe(data_float32, lang_src, beam_size=5, history=None, task='transcri
     else: ### return words up to ending_word_id
         ending = int(words[ending_word_id].end*samples_per_second)
         transcription = ''.join(transcription[:ending_word_id+1]).strip()
+    return transcription, ending
 
-    logging.info('lang_src = {}, ending = {}, transcription = {}'.format(lang_src, ending, transcription))
-    return transcription, ending, lang_src
+def transcribe(data_float32, lang_src, beam_size=5, history=None, task='transcribe'):
+    language = None if lang_src == 'pr' else lang_src
+    duration = len(data_float32)/samples_per_second
+    segments, info = Transcriber.transcribe(data_float32, language=language, task=task, beam_size=beam_size, vad_filter=True, word_timestamps=True, initial_prompt=history)
+    transcription, ending = parse_transcription(segments, duration)
+    logging.info('SERVER: transcription lang_src = {}, ending = {}, transcription = {}'.format(info.language, ending, transcription))
+    return duration, transcription, ending, info.language
 
 def translate(transcription, lang_tgt):
     if lang_tgt == '' or transcription == '':
@@ -74,105 +72,55 @@ def translate(transcription, lang_tgt):
     input_stream = "｟" + lang_tgt + "｠" + " " + transcription
     results = Translator.translate_batch([Tokenizer(input_stream)])
     translation = Tokenizer.detokenize(results[0].hypotheses[0])
-    logging.info('translation = {}'.format(translation))
+    logging.info('SERVER translation = {}'.format(translation))
     return translation
 
-def float32_to_mp3(numpy_array, output_file, sample_width=2, frame_rate=16000):
-    # Scale float32 values to the range [-1, 1]
-    numpy_array = numpy_array / np.max(np.abs(numpy_array))
-    # Convert float32 array to int16 array
-    int16_array = (numpy_array * 32767).astype(np.int16)
-    # Ensure the length is a multiple of (sample_width * channels)
-    aligned_length = len(int16_array) - (len(int16_array) % sample_width)
-    # Trim or pad the array to the aligned length
-    int16_array = int16_array[:aligned_length]
-    # Create AudioSegment from int16 array
-    audio_segment = AudioSegment(
-        int16_array.tobytes(),
-        sample_width=sample_width,
-        frame_rate=frame_rate,
-        channels=1  # Assuming mono audio
-    )
-    audio_segment.export(output_file, format="mp3")
-
-def base64_to_float32(audio_chunk_base64):
-    audio_chunk = base64.b64decode(audio_chunk_base64)
-    audio_bytes = io.BytesIO(audio_chunk) 
-    resampler = av.audio.resampler.AudioResampler(format="s16", layout="mono", rate=samples_per_second)
-    raw_buffer = io.BytesIO()
-    dtype = None
-    with av.open(audio_bytes, mode="r", metadata_errors="ignore") as container:
-        frames = container.decode(audio=0)
-        frames = _ignore_invalid_frames(frames)
-        frames = _group_frames(frames, 500000)
-        frames = _resample_frames(frames, resampler)
-        for frame in frames:
-            array = frame.to_ndarray()
-            dtype = array.dtype
-            raw_buffer.write(array)
-    # It appears that some objects related to the resampler are not freed
-    # unless the garbage collector is manually run.
-    del resampler
-    gc.collect()
-    audio = np.frombuffer(raw_buffer.getbuffer(), dtype=dtype)
-    # Convert s16 back to f32.
-    audio = audio.astype(np.float32) / 32768.0
-    return audio
-
-def _ignore_invalid_frames(frames):
-    iterator = iter(frames)
-    while True:
-        try:
-            yield next(iterator)
-        except StopIteration:
-            break
-        except av.error.InvalidDataError:
-            continue
-
-def _group_frames(frames, num_samples=None):
-    fifo = av.audio.fifo.AudioFifo()
-    for frame in frames:
-        frame.pts = None  # Ignore timestamp check.
-        fifo.write(frame)
-        if num_samples is not None and fifo.samples >= num_samples:
-            yield fifo.read()
-    if fifo.samples > 0:
-        yield fifo.read()
-
-def _resample_frames(frames, resampler):
-    # Add None to flush the resampler.
-    for frame in itertools.chain(frames, [None]):
-        yield from resampler.resample(frame)
+def request_data(request_json):
+    request = json.loads(request_json)
+    timestamp = request.get('timestamp', 0)
+    chunk = request.get('audioData', '') #in base64 format as transformed by the client
+    chunkId = request.get('chunkId', -1)
+    lang_src = request.get('lang_src', 'pr')
+    lang_tgt = request.get('lang_tgt', '')
+    logging.info('SERVER: Received chunkId={} lang_src={} lang_tgt={}'.format(chunkId, lang_src, lang_tgt))
+    return timestamp, chunk, chunkId, lang_src, lang_tgt
 
 async def handle_connection(websocket, path):
     p = pyaudio.PyAudio()
-    #prefix_wav = b""
-    prefix = np.empty([1], dtype=np.float32)
+    audio = np.empty([1], dtype=np.float32)
 
     try:
         while True:
             request_json = await websocket.recv()
-            curr_time = time.strftime("%Y-%m-%d_%H:%M:%S")
-            request = json.loads(request_json)
-            chunk = request.get('audioData', '') #in base64 format as transformed by the client
-            chunkId = request.get('chunkId', '')
-            lang_src = request.get('lang_src', '')
-            lang_tgt = request.get('lang_tgt', '')
-            logging.info('SERVER: Received chunkId={} lang_src={} lang_tgt={}'.format(chunkId, lang_src, lang_tgt))
-            ### compose new audio with prefix
-            prefix = np.concatenate((prefix, base64_to_float32(chunk)))
-            ### transcript and translate
-            transcription, ending, lang_src = transcribe(prefix, lang_src)
+            timestamp, chunk, chunkId, lang_src, lang_tgt = request_data(request_json)
+            ### delay message ###
+            time_request_delay = time.time() - timestamp/1000 #seconds
+            ### format and compose audio ###
+            tic = time.time()
+            audio = np.concatenate((audio, base64_to_float32(chunk, samples_per_second=samples_per_second)))
+            time_formatting = time.time() - tic
+            ### transcribe ###
+            tic = time.time()
+            duration, transcription, ending, lang_src = transcribe(audio, lang_src)
+            time_transcribe = time.time() - tic
+            ### translate ###
+            tic = time.time()
             translation = translate(transcription, lang_tgt)
+            time_translate = time.time() - tic
+            ### response ###
             response_dict = {'transcription': transcription, 'translation': translation, 'eos': ending>0, 'lang_src': lang_src}
             logging.info('SERVER: Send={}'.format(response_dict))
-            ### update prefix if found end of sentence
+            ### update audio if found end of sentence
+            time_save = 0
             if ending:
                 if save_file:
-                    float32_to_mp3(prefix, '/Users/crego/Desktop/audio_{}_{}.mp3'.format(chunkId, curr_time))
-                prefix = prefix[ending:]
-
-
+                    ### save audio ###
+                    tic = time.time()
+                    float32_to_mp3(audio, '/Users/crego/Desktop/audio_{}_{}.mp3'.format(curr_time, chunkId))
+                    time_save = time.time() - tic
+                ### reduce audio ###
+                audio = audio[ending:]
+            logging.info('SERVER: messg delay={:.2f}, audio format={:.2f}, audio duration={:.2f}, transcription={:.2f}, tanslation={:.2f}, save={:.2f} (seconds)'.format(time_request_delay, time_formatting, duration, time_transcribe, time_translate, time_save))
             await websocket.send(json.dumps(response_dict))
             await asyncio.sleep(delay_sec)
 
