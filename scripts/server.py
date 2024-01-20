@@ -13,44 +13,58 @@ from datetime import datetime
 from faster_whisper import WhisperModel
 from Utils import *
 
-def parse_transcription(segments, audio_duration):
+def parse_transcription(segments, audio_duration, info):
     ### flatten the words list
     words = [w for s in segments for w in s.words]
-    ending_id = -1
-    transcription = []
-    for i, word in enumerate(words):
-        transcription.append(word.word)
-        logging.debug("word\t{}\t{}\t{}".format(word.start,word.end,word.word))
+    ### current transcription is segmented (finished) when:
+    # the last word ended by any of the suffixes and at a minimum distance of the last word
+    # the last word succeeded by a long silence
+    transcription =[]
+    ending_id = -1 #transcription is composed of words up to ending_id
+    ending = 0 #consume up to ending floats
+    eos = False #found an EndOfSentence
+    for i in range(words):
+        transcription.append(words[i].word)
+        curr_end = words[i].end
+        next_start = words[i+1].start if i+1 < len(words) else audio_duration
+        if next_start-curr_end > silence:
+            ending_id = i
+            ending = int((0.75*(next_start-curr_end)+next_start) * samples_per_second)
+            eos = True
+            logging.debug('eos found by silence at ending_id={} ending={:.2f} sec'.format(ending_id, ending))
         if i < len(words)-distance and any(word.word.endswith(suffix) for suffix in suffixes):
             ending_id = i
-            logging.debug('eos found at {:.2f} sec'.format(words[ending_id].end))
+            ending = int((0.75*(next_start-curr_end)+next_start) * samples_per_second)
+            eos = True
+            logging.debug('eos found by suffix at ending_id={} ending={:.2f} sec'.format(ending_id, ending))
+
     logging.debug('transcription (complete) of {:.2f} sec = {}'.format(audio_duration, ''.join(transcription).strip()))
 
-    if len(words) == 0:
-        if audio_duration >= silent:
-            logging.debug('silent audio (discarded)')
-            return '', False, int(0.75*audio_duration*samples_per_second) #discard 75% of the audio
-        logging.debug('silent audio')
-        return '', False, 0
-
+    ### found an EndOfSentence
     if ending_id >= 0:
-        return ''.join(transcription[:ending_id+1]).strip(), True, int(words[ending_id].end*samples_per_second)
+        return ''.join(transcription[:ending_id+1]).strip(), eos, ending
 
-    if len(words) and words[-1].end < audio_duration - silence: ### force ending
-        logging.debug('eos forced by ending silence of {} sec, max silence duration is {} sec'.format(audio_duration - words[-1].end, silence))
-        return ''.join(transcription).strip(), True, int(0.5*(audio_duration+words[-1].end)*samples_per_second) #in the middle between word.end and audio_duration
+    ### no words transcribed... audio_duration sufficiently large (>= silence)
+    if len(words) == 0 and audio_duration >= silence:
+        logging.debug('silent audio (consumes audio)')
+        ending = int(0.75*audio_duration*samples_per_second)
+        return '', eos, ending
 
-    if len(words) and audio_duration > duration: ### force ending
-        logging.debug('eos forced by audio duration of {} sec, max audio duration is {} sec'.format(audio_duration, duration))
-        return ''.join(transcription).strip(), True, int(0.5*(audio_duration+words[-1].end)*samples_per_second) #in the middle between word.end and audio_duration
+    ### force ending since audio already too large
+    if len(words) and audio_duration > duration: 
+        logging.debug('eos forced by audio duration of {} sec'.format(audio_duration))
+        eos = True
+        ending = int(0.5*(audio_duration+words[-1].end)*samples_per_second) #in the middle between word.end and audio_duration
+        return ''.join(transcription).strip(), eos, ending
 
-    return ''.join(transcription).strip(), False, 0 # return all words, ending is 0 (do not consume current audio)
+    ### return all words, endo of sentence not found and do not consume current audio
+    return ''.join(transcription).strip(), eos, ending 
 
 def transcribe(data_float32, lang_src, beam_size=5, history=None, task='transcribe'):
     language = None if lang_src == 'pr' else lang_src
     audio_duration = len(data_float32)/samples_per_second
     segments, info = Transcriber.transcribe(data_float32, language=language, task=task, beam_size=beam_size, vad_filter=True, word_timestamps=True, initial_prompt=history)
-    transcription, eos, ending = parse_transcription(segments, audio_duration)
+    transcription, eos, ending = parse_transcription(segments, audio_duration, info)
     lang_src = info.language if len(transcription) else lang_src 
     logging.info('SERVER: transcription lang_src = {}, eos = {} ending = {}, transcription = {}'.format(info.language, eos, ending, transcription))
     return audio_duration, transcription, eos, ending, lang_src
@@ -138,8 +152,7 @@ if __name__ == '__main__':
     eos_opts = parser.add_argument_group("EndOfSentence prediction")
     eos_opts.add_argument('--suffixes', type=str, help='String with ending suffixes for a word to be considered as EndOfSentence.', default='.?!,۔؟!،')
     eos_opts.add_argument('--distance', type=int, help='Distance (number of words) to last word in audio to consider a word as EndOfSentence.', default=1)
-    eos_opts.add_argument('--silence', type=float, help='Maximum silent duration (seconds) after last word to predict EndOfSentence.', default=2.0)
-    eos_opts.add_argument('--silent', type=float, help='Minimum duration of a silent audio to discard it.', default=1.5)
+    eos_opts.add_argument('--silence', type=float, help='Maximum duration of silence (seconds) to predict EndOfSentence.', default=2.0)
     eos_opts.add_argument('--duration', type=float, help='Maximum audio duration (seconds) to predict EndOfSentence.', default=10.0)
     other = parser.add_argument_group("Other options")
     other.add_argument('--save', type=str, help='Directory where to save audio files with segmented sentences.', default=None)
