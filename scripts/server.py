@@ -13,7 +13,37 @@ from datetime import datetime
 from faster_whisper import WhisperModel
 from Utils import *
 
-def parse_transcription(segments, audio_duration, info):
+#info = TranscriptionInfo(
+#            language=language,
+#            language_probability=language_probability,
+#            duration=duration,
+#            duration_after_vad=duration_after_vad,
+#            transcription_options=options,
+#            vad_options=vad_parameters,
+#            all_language_probs=all_language_probs,
+#        )
+
+#class Segment(NamedTuple):
+#    id: int
+#    seek: int
+#    start: float
+#    end: float
+#    text: str
+#    tokens: List[int]
+#    temperature: float
+#    avg_logprob: float
+#    compression_ratio: float
+#    no_speech_prob: float
+#    words: Optional[List[Word]]
+
+#class Word(NamedTuple):
+#    start: float
+#    end: float
+#    word: str
+#    probability: float
+
+def parse_transcription(segments, info):
+    audio_duration = info.duration #int(len(audio)*samples_per_second)
     ### flatten the words list
     words = [w for s in segments for w in s.words]
     ### current transcription is finished by:
@@ -67,12 +97,11 @@ def parse_transcription(segments, audio_duration, info):
 
 def transcribe(data_float32, lang_src, beam_size=5, history=None, task='transcribe'):
     language = None if lang_src == 'pr' else lang_src
-    audio_duration = len(data_float32)/samples_per_second
     segments, info = Transcriber.transcribe(data_float32, language=language, task=task, beam_size=beam_size, vad_filter=True, word_timestamps=True, initial_prompt=history)
-    transcription, eos, ending = parse_transcription(segments, audio_duration, info)
+    transcription, eos, ending = parse_transcription(segments, info)
     lang_src = info.language if len(transcription) else lang_src 
     logging.info('SERVER: transcription lang_src = {}, eos = {} ending = {}, transcription = {}'.format(info.language, eos, ending, transcription))
-    return audio_duration, transcription, eos, ending, lang_src
+    return transcription, eos, ending, lang_src
 
 def translate(transcription, lang_tgt):
     if lang_tgt == '' or transcription == '':
@@ -107,10 +136,11 @@ async def handle_connection(websocket, path):
             ### format and compose audio ###
             tic = time.time()
             audio = np.concatenate((audio, base64_to_float32(chunk, samples_per_second=samples_per_second)))
+            audio_duration = len(audio)/samples_per_second
             time_formatting = time.time() - tic
             ### transcribe ###
             tic = time.time()
-            audio_duration, transcription, eos, ending, lang_src = transcribe(audio, lang_src)
+            transcription, eos, ending, lang_src = transcribe(audio, lang_src)
             time_transcribe = time.time() - tic
             ### translate ###
             tic = time.time()
@@ -158,7 +188,7 @@ if __name__ == '__main__':
     eos_opts.add_argument('--suffixes', type=str, help='String with ending suffixes for a word to be considered as EndOfSentence.', default='.?!,۔؟!،')
     eos_opts.add_argument('--distance', type=int, help='Distance (number of words) to last word in audio to consider a word as EndOfSentence.', default=1)
     eos_opts.add_argument('--silence', type=float, help='Maximum duration of silence (seconds) to predict EndOfSentence.', default=2.0)
-    eos_opts.add_argument('--duration', type=float, help='Maximum audio duration (seconds) to predict EndOfSentence.', default=10.0)
+    eos_opts.add_argument('--duration', type=float, help='When this duration (seconds) is exceeded EndOfSentence is forced.', default=10.0)
     other = parser.add_argument_group("Other options")
     other.add_argument('--save', type=str, help='Directory where to save audio files with segmented sentences.', default=None)
     other.add_argument('--delay', type=float, help='Delay between requests.', default=0.05)
