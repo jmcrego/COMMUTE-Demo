@@ -6,7 +6,7 @@
 
 * Clone this repository:
 ```
-git clone https://github.com/jmcrego/BiSync.git
+git clone https://github.com/jmcrego/COMMUTE-Demo.git
 ```
 * Dependencies in requirements.txt are needed to run the server.
 ```
