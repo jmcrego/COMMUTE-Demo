@@ -1,3 +1,5 @@
+<p align="right"> <img src="pics/SYSTRAN.png" height="75"/> &nbsp; &nbsp; <img src="pics/LIUM.png" height="75"/> </p>
+
 # COMMUTE-Demo
 
 ## Download and Install
