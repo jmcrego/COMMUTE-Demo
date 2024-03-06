@@ -30,7 +30,7 @@ To run the model (linux or macos) use:
 ```bash
 python scripts/server.py --ct2_dir model/checkpoint-50000.pt.ct2 --bpe_file model/bpe-ar-en-fr-50k
 ```
-The corresponding Whisper model (by default tiny) will be automatically downloaded from huggingface repositories
+The corresponding Whisper model (by default tiny) is automatically downloaded from huggingface repositories
 
 ### Client
 
