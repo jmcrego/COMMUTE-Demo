@@ -36,4 +36,4 @@ python scripts/server.py --ct2_dir model/checkpoint-50000.pt.ct2 --bpe_file mode
 Open index.html using any web browser (preferably Chrome):
 * Use the start/stop button to start/stop to client that :
   - Listens to the microphone.
-  - Select a sequence of words to get alternative translations for the selected sequence.
+  - Sends audio buckets to the server and receives corresponding transcription/translations.
