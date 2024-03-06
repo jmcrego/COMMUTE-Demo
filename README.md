@@ -12,7 +12,7 @@ git clone https://github.com/jmcrego/COMMUTE-Demo.git
 ```
 pip install -r requirements.txt
 ```
-* Download NMT model and bpe codes (model.tgz):
+* Download NMT model and bpe codes (model.tgz)
 * Uncompress the .tgz file:
 ```
 tar xvzf tar xcvzf model.tgz
