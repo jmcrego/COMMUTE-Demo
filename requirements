@@ -1,5 +1,3 @@
-https://nodejs.org/en/download
-
 faster-whisper==0.9.0
 tokenizers==0.15.2
 pyonmttok==1.37.1
