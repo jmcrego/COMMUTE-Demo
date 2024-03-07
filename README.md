@@ -8,9 +8,9 @@
 ```
 git clone https://github.com/jmcrego/COMMUTE-Demo.git
 ```
-* Dependencies in requirements.txt are needed to run the server.
+* Dependencies in requirements are needed to run the server.
 ```
-pip install -r requirements.txt
+pip install -r requirements
 ```
 * Download NMT model and bpe codes (model.tgz)
 * Uncompress the .tgz file:
