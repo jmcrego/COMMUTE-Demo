@@ -14,7 +14,27 @@
     <center>
       <button class="record" style="font-size: 22px; width: 100px; height: 50px;" id="recordButton" onclick="clickRecordButton()">Start</button> <!--🎙-->
     </center>
-
+		<i class="fa-solid fa-play fa-2xl"></i>
+    
+    <div class="table" id="tableResults">
+      <div class="row">
+        <div class="cell">
+          <div class="sub-cell wide"><h3>Transcription</h3></div>
+          <button id="transcript_pr" class="sub-cell normal" onclick="changeTranscription(this.id)">Predict</button>
+          <button id="transcript_fr" class="sub-cell normal" onclick="changeTranscription(this.id)">French</button>
+          <button id="transcript_en" class="sub-cell normal" onclick="changeTranscription(this.id)">English</button>
+          <button id="transcript_ar" class="sub-cell normal" onclick="changeTranscription(this.id)">Arabic</button>
+        </div>
+        <div class="cell">
+          <div class="sub-cell wide"><h3>Translation</h3></div>
+          <button class="sub-cell normal" style="color:transparent;">Predict</button>
+          <button id="translate_fr" class="sub-cell normal" onclick="changeTranslation(this.id)">French</button>
+          <button id="translate_en" class="sub-cell normal" onclick="changeTranslation(this.id)">English</button>
+          <button id="translate_ar" class="sub-cell normal" onclick="changeTranslation(this.id)">Arabic</button>
+        </div>
+      </div>
+    </div>
+    <!--
     <table id="tableResults">
       <tr>
         <td>
@@ -39,13 +59,14 @@
             </tr>
           </table>
         </td>
-      </tr>
+      </tr>-->
       <!--tr>
         <td class="cellcontent"></td>
         <td class="cellcontent"></td>
       </tr-->
+    <!--
     </table>
-
+    -->
     <label for="toggle">&nbsp;&nbsp;🛠&nbsp;&nbsp;</label>
     <input type="checkbox" id="toggle">
     <aside>
@@ -53,7 +74,7 @@
       <table>
         <tr>
           <td  style="width: 440px;">
-            <img src="pics/commute.png" alt="Commute" style="width:400px;">
+            <img ytsrc="pics/commute.png" alt="Commute" style="width:400px;">
           </td>
           <td>
             <p>Plateforme d’Assistance à la Communication Multilingue en ligne.</p>

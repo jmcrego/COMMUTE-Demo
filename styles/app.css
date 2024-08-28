@@ -4,22 +4,10 @@
   box-sizing: border-box;
 }
 
-/*
-html, body {
-  height: 100%;
-}
-*/
-
 body {
   font-family: 'Open Sans', sans-serif;
   font-size: 1.0rem;
   user-select: none;
-}
-
-.wrapper {
-  /*height: 100%;*/
-  display: flex;
-  flex-direction: column;
 }
 
 h1, h2 {
@@ -29,22 +17,18 @@ h1, h2 {
   padding: 0.5rem 0 0 0;
 }
 
-.main-controls {
-  padding: 0.75rem 0;
+table {
+  width: 95%;
+  border-collapse: collapse;
+  margin: 5px auto; /* Center the table */
 }
 
-canvas {
-  display: block;
-  margin-bottom: 0.5rem;
-}
-
-.content-div {
-  box-sizing: border-box;
-  width: 100%;
-  height: 100%;
-  padding: 20px;
-  border: 1px solid #ccc;
-  background-color: white;
+th, td {
+  border: 0px solid #ccc;
+  /*padding: 5px;*/
+  text-align: left;
+  height: var(--main-size);
+  vertical-align: middle;
 }
 
 .cellbutton{
@@ -59,44 +43,25 @@ canvas {
   box-sizing: border-box;
   padding: 10px;
   background-color: white;
-  resize: vertical; 
+  resize: vertical;
   width: 50%;
-}
-
-table {
-  width: 95%;
-  border-collapse: collapse;
-  margin: 5px auto; /* Center the table */
-}
-
-th, td {
-  border: 0px solid #ccc;
-  padding: 5px;
-  /*text-align: left;*/
-}
-
-#buttons {
-  display: flex;
-  flex-direction: row;
-  /*justify-content: space-between;*/
-  justify-content: center;
-}
-
-#buttons button {
-  font-size: 1rem;
-  padding: 0.1rem;
-  width: 100px; /*calc(50% - 0.25rem);*/
-  cursor: pointer;
+  /*display: flex;*/
+  /*flex-direction: row;*/
+  /*font-size: 2vh;*/
 }
 
 button {
   font-size: 1rem;
   background: DarkBlue; /*#0088cc;*/
   text-align: center;
-  color: white;
+  /*color: white;*/
   border: none;
   transition: all 0.2s;
   padding: 0.5rem;
+}
+
+.record{
+color:white;
 }
 
 button:hover { /*, button:focus {*/
@@ -105,26 +70,26 @@ button:hover { /*, button:focus {*/
   /*background: #0ae;*/
 }
 
-section, article {
-  display: block;
-}
-
 fr::before {
+  flex:1;
   font-family: 'Courier New', Courier, monospace;
   background-color: LightBlue;
   content: "fr";
 }
 en::before {
+  flex:1;
   font-family: 'Courier New', Courier, monospace;
   background-color: LightCoral;
   content: "en";
 }
 ar::before {
+  flex:1;
   font-family: 'Courier New', Courier, monospace;
   background-color: LightGreen;
   content: "ar";
 }
 xx::before {
+  flex:1;
   font-family: 'Courier New', Courier, monospace;
   background-color: LightGrey;
   content: "xx";
@@ -183,4 +148,87 @@ input[type=checkbox]:checked ~ aside {
     max-width: 1000px;
     margin: 0 auto;
   }
+}
+
+/* Define common styles for the SVG elements */
+/*.svg-common {
+  width: 5vh; 
+  height: 5vh; 
+  fill: blue; 
+}
+
+.svg-common.change-color {
+  fill: red; 
+}
+
+.svg-common:hover {
+  fill: green; 
+}
+
+.svg-common.change-color:hover {
+  fill: yellow; 
+}*/
+
+.table {
+  display: flex;
+  flex-direction: column;
+  /*border: 1px solid #ccc;*/
+  margin-left: 4.0rem;
+  margin-right: 4.0rem;
+}
+.row {
+display: flex;
+border-bottom: 1px solid #ccc;
+}
+.cell {
+display: flex;
+flex-direction: row;
+flex: 1;
+padding: 10px;
+/*border-right: 1px solid #ccc;*/
+align-items: center;
+}
+.sub-cell {
+padding: 5px;
+/*border-right: 1px solid #ccc;*/
+cursor: pointer;
+border: 0px solid #ccc;
+background-color: transparent;
+}
+.wide{
+text-align: left;
+flex:2;
+}
+.normal {
+text-align: center;
+flex: 1; /* Taille normale */
+}
+
+.svg{
+flex:1;
+height: 1.5rem;
+width: 1.5rem;
+fill: blue;
+}
+
+.svg.change-color {
+fill: red; /* Couleur de remplissage pendant l'exécution de la fonction */
+}
+
+/* Define the hover effect for the SVG elements */
+.svg:hover {
+fill: green; /* Change fill color on hover */
+}
+
+.svg.change-color:hover {
+fill: yellow; /* Couleur de remplissage pendant l'exécution de la fonction */
+}
+
+.balise{
+flex:1;
+}
+
+.texte{
+flex:23;
+margin-left: 0.5rem;
 }

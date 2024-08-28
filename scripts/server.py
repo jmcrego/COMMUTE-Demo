@@ -11,7 +11,7 @@ import numpy as np
 import ctranslate2
 from datetime import datetime
 from faster_whisper import WhisperModel
-from Utils import *
+from Utils_bis import *
 
 #info = TranscriptionInfo(
 #            language=language,
@@ -42,6 +42,9 @@ from Utils import *
 #    word: str
 #    probability: float
 
+debut_transcription = 0
+fin_transcription = 0
+
 def parse_transcription(segments, info):
     audio_duration = info.duration #int(len(audio)*samples_per_second)
     ### flatten the words list
@@ -62,12 +65,14 @@ def parse_transcription(segments, info):
         next_start = words[i+1].start if i+1 < len(words) else audio_duration
         if next_start-curr_end > silence:
             ending_id = i
-            ending = int((0.75*(next_start-curr_end)+curr_end) * samples_per_second)
+            #ending = int((0.75*(next_start-curr_end)+curr_end) * samples_per_second)
+            ending = int(0.9 * (next_start) * samples_per_second)
             eos = True
             logging.debug('eos found by silence at ending_id={} ending={:.2f} sec'.format(ending_id, ending))
         if i < len(words)-distance and any(words[i].word.endswith(suffix) for suffix in suffixes):
             ending_id = i
-            ending = int((0.75*(next_start-curr_end)+curr_end) * samples_per_second)
+            #ending = int((0.75*(next_start-curr_end)+curr_end) * samples_per_second)
+            ending = int(0.9 * (next_start) * samples_per_second)
             eos = True
             logging.debug('eos found by suffix at ending_id={} ending={:.2f} sec'.format(ending_id, ending))
 
@@ -76,7 +81,8 @@ def parse_transcription(segments, info):
         curr_end = words[-1].end
         next_start = audio_duration
         ending_id = len(words) - 1
-        ending = int((0.75*(next_start-curr_end)+curr_end) * samples_per_second)
+        #ending = int((0.75*(next_start-curr_end)+curr_end) * samples_per_second)
+        ending = int(0.9 * (next_start) * samples_per_second)
         eos = True
 
     logging.debug('transcription (complete) of {:.2f} sec = {}'.format(audio_duration, ''.join(transcription).strip()))
@@ -124,9 +130,11 @@ def request_data(request_json):
     return timestamp, chunk, chunkId, lang_src, lang_tgt
 
 async def handle_connection(websocket, path):
+    global fin_transcription
+    global debut_transcription
     p = pyaudio.PyAudio()
     audio = np.empty([1], dtype=np.float32)
-
+    logging.info('on rentre dans handle connection')
     try:
         while True:
             request_json = await websocket.recv()
@@ -146,9 +154,8 @@ async def handle_connection(websocket, path):
             tic = time.time()
             translation = translate(transcription, lang_tgt) if eos else ''
             time_translate = time.time() - tic
-            ### response ###
-            response_dict = {'transcription': transcription, 'translation': translation, 'eos': eos, 'lang_src': lang_src}
-            logging.debug('SERVER: send={}'.format(response_dict))
+            
+            #logging.debug('SERVER: send={}'.format(response_dict))
             ### update audio if found EndOfSentence
             time_save = 0
             if ending:
@@ -157,6 +164,10 @@ async def handle_connection(websocket, path):
                     tic = time.time()
                     float32_to_mp3(audio, save, '{}_{}.mp3'.format(curr_time, chunkId))
                     time_save = time.time() - tic
+                    
+                ### On récupère l'audio à retourner ###
+                audio_response = audio
+                
                 ### reduce audio ###
                 audio = audio[ending:]
             logging.info('SERVER: messg delay={:.2f}, audio format={:.2f}, audio duration={:.2f}, transcription={:.2f}, tanslation={:.2f}, save={:.2f} (seconds)'.format(
@@ -166,6 +177,16 @@ async def handle_connection(websocket, path):
                 time_transcribe, 
                 time_translate, 
                 time_save))
+                
+            ### Création de la réponse au client JS ###
+            ### On ajoute l'audio à retourner ###
+        
+            if ending:
+                fin_transcription = fin_transcription + (ending/samples_per_second)
+            
+            response_dict = {'transcription': transcription, 'translation': translation, 'eos': eos, 'lang_src': lang_src, 'debut': debut_transcription, 'fin': fin_transcription}
+            debut_transcription = fin_transcription
+            
             await websocket.send(json.dumps(response_dict))
             await asyncio.sleep(args.delay)
 
@@ -205,7 +226,7 @@ if __name__ == '__main__':
         level=getattr(logging, args.log, None), 
         filename=args.logf)
 
-    ### Global vars    
+    ### Global vars
     Transcriber = WhisperModel(model_size_or_path=args.model_size, device=args.device, compute_type=args.compute_type)
     Translator = ctranslate2.Translator(args.ct2_dir, device=args.device)
     Tokenizer = pyonmttok.Tokenizer("aggressive", joiner_annotate=True, preserve_placeholders=True, bpe_model_path=args.bpe_file)
