@@ -11,7 +11,7 @@ import numpy as np
 import ctranslate2
 from datetime import datetime
 from faster_whisper import WhisperModel
-from Utils_bis import *
+from Utils import *
 
 #info = TranscriptionInfo(
 #            language=language,
