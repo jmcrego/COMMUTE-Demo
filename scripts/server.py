@@ -42,8 +42,12 @@ from Utils import *
 #    word: str
 #    probability: float
 
-debut_transcription = 0
-fin_transcription = 0
+debut_transcription_mic = 0
+fin_transcription_mic = 0
+
+debut_transcription_intern = 0
+fin_transcription_intern = 0
+
 
 def parse_transcription(segments, info):
     audio_duration = info.duration #int(len(audio)*samples_per_second)
@@ -122,70 +126,90 @@ def translate(transcription, lang_tgt):
 def request_data(request_json):
     request = json.loads(request_json)
     timestamp = request.get('timestamp', 0)
-    chunk = request.get('audioData', '') #in base64 format as transformed by the client
+    chunk_mic = request.get('mic_audioData', '') #in base64 format as transformed by the client
+    chunk_intern = request.get('intern_audioData', '')
     chunkId = request.get('chunkId', -1)
     lang_src = request.get('lang_src', 'pr')
     lang_tgt = request.get('lang_tgt', '')
     logging.debug('SERVER: received chunkId={} lang_src={} lang_tgt={}'.format(chunkId, lang_src, lang_tgt))
-    return timestamp, chunk, chunkId, lang_src, lang_tgt
+    return timestamp, chunk_mic, chunk_intern, chunkId, lang_src, lang_tgt
 
 async def handle_connection(websocket, path):
-    global fin_transcription
-    global debut_transcription
+    global fin_transcription_mic
+    global debut_transcription_mic
+    global fin_transcription_intern
+    global debut_transcription_intern
+
     p = pyaudio.PyAudio()
-    audio = np.empty([1], dtype=np.float32)
+    audio_mic = np.empty([1], dtype=np.float32)
+    audio_intern = np.empty([1], dtype=np.float32)
     logging.info('on rentre dans handle connection')
     try:
         while True:
             request_json = await websocket.recv()
-            timestamp, chunk, chunkId, lang_src, lang_tgt = request_data(request_json)
+            timestamp, chunk_mic, chunk_intern, chunkId, lang_src, lang_tgt = request_data(request_json)
             ### delay message ###
             time_request_delay = time.time() - timestamp/1000 #seconds
             ### format and compose audio ###
             tic = time.time()
-            audio = np.concatenate((audio, base64_to_float32(chunk, samples_per_second=samples_per_second)))
-            audio_duration = len(audio)/samples_per_second
+
+            audio_mic = np.concatenate((audio_mic, base64_to_float32(chunk_mic, samples_per_second=samples_per_second)))
+            audio_intern = np.concatenate((audio_intern, base64_to_float32(chunk_intern, samples_per_second=samples_per_second)))
+
+            audio_duration_mic = len(audio_mic)/samples_per_second
+            audio_duration_intern = len(audio_intern)/samples_per_second
+            
             time_formatting = time.time() - tic
             ### transcribe ###
             tic = time.time()
-            transcription, eos, ending, lang_src = transcribe(audio, lang_src)
+
+            transcription_mic, eos_mic, ending_mic, lang_src_mic = transcribe(audio_mic, lang_src)
+            transcription_intern, eos_intern, ending_intern, lang_src_intern = transcribe(audio_intern, lang_src)
+            
             time_transcribe = time.time() - tic
             ### translate ###
             tic = time.time()
-            translation = translate(transcription, lang_tgt) if eos else ''
+
+            translation_mic = translate(transcription_mic, lang_tgt) if eos_mic else ''
+            translation_intern = translate(transcription_intern, lang_tgt) if eos_intern else ''
+            
             time_translate = time.time() - tic
             
             #logging.debug('SERVER: send={}'.format(response_dict))
             ### update audio if found EndOfSentence
-            time_save = 0
-            if ending:
-                if save is not None:
-                    ### save audio ###
-                    tic = time.time()
-                    float32_to_mp3(audio, save, '{}_{}.mp3'.format(curr_time, chunkId))
-                    time_save = time.time() - tic
-                    
-                ### On récupère l'audio à retourner ###
-                audio_response = audio
-                
+            if ending_mic:
+
                 ### reduce audio ###
-                audio = audio[ending:]
-            logging.info('SERVER: messg delay={:.2f}, audio format={:.2f}, audio duration={:.2f}, transcription={:.2f}, tanslation={:.2f}, save={:.2f} (seconds)'.format(
-                time_request_delay, 
-                time_formatting, 
-                audio_duration, 
-                time_transcribe, 
-                time_translate, 
-                time_save))
+                audio_mic = audio_mic[ending_mic:]
+                logging.info('SERVER: messg delay={:.2f}, audio format={:.2f}, audio duration={:.2f}, transcription={:.2f}, tanslation={:.2f}'.format(
+                    time_request_delay, 
+                    time_formatting, 
+                    audio_duration_mic, 
+                    time_transcribe, 
+                    time_translate))
+
+            if ending_intern:
+                audio_intern = audio_intern[ending_intern:]
+                logging.info('SERVER: messg delay={:.2f}, audio format={:.2f}, audio duration={:.2f}, transcription={:.2f}, tanslation={:.2f}'.format(
+                    time_request_delay, 
+                    time_formatting, 
+                    audio_duration_intern, 
+                    time_transcribe, 
+                    time_translate))
+
                 
             ### Création de la réponse au client JS ###
             ### On ajoute l'audio à retourner ###
         
-            if ending:
-                fin_transcription = fin_transcription + (ending/samples_per_second)
+            if ending_mic:
+                fin_transcription_mic = fin_transcription_mic + (ending_mic/samples_per_second)
+            if ending_intern:
+                fin_transcription_intern = fin_transcription_intern + (ending_intern/samples_per_second)
             
-            response_dict = {'transcription': transcription, 'translation': translation, 'eos': eos, 'lang_src': lang_src, 'debut': debut_transcription, 'fin': fin_transcription}
-            debut_transcription = fin_transcription
+            response_dict = {'transcription_intern': transcription_intern, 'translation_intern': translation_intern, 'transcription_mic': transcription_mic, 'translation_mic':translation_mic, 'eos_intern':eos_intern, 'eos_mic': eos_mic, 'lang_src_intern': lang_src_intern, 'lang_src_mic': lang_src_mic, 'debut_intern': debut_transcription_intern, 'fin_intern': fin_transcription_intern, 'debut_mic': debut_transcription_mic, 'fin_mic': fin_transcription_mic}
+            
+            debut_transcription_mic = fin_transcription_mic
+            debut_transcription_intern = fin_transcription_intern
             
             await websocket.send(json.dumps(response_dict))
             await asyncio.sleep(args.delay)

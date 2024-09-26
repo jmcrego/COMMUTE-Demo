@@ -72,27 +72,45 @@ button:hover { /*, button:focus {*/
 
 fr::before {
   flex:1;
+  margin-left: 0.25rem;
   font-family: 'Courier New', Courier, monospace;
   background-color: LightBlue;
   content: "fr";
 }
 en::before {
   flex:1;
+  margin-left: 0.25rem;
   font-family: 'Courier New', Courier, monospace;
   background-color: LightCoral;
   content: "en";
 }
 ar::before {
   flex:1;
+  margin-left: 0.25rem;
   font-family: 'Courier New', Courier, monospace;
   background-color: LightGreen;
   content: "ar";
 }
 xx::before {
   flex:1;
+  margin-left: 0.25rem;
   font-family: 'Courier New', Courier, monospace;
   background-color: LightGrey;
   content: "xx";
+}
+mic::before {
+  flex:1;
+  margin-left: 0.5rem;
+  font-family: 'Courier New', Courier, monospace;
+  background-color: orange;
+  content: "me";
+}
+intern::before {
+  flex:1;
+  margin-left: 0.5rem;
+  font-family: 'Courier New', Courier, monospace;
+  background-color: cyan;
+  content: "ot";
 }
 
 /* Checkbox hack to control information box display */
