@@ -4,10 +4,19 @@
   box-sizing: border-box;
 }
 
+
+html{
+  height:100%;
+}
+
 body {
   font-family: 'Open Sans', sans-serif;
   font-size: 1.0rem;
   user-select: none;
+  /*height: 100%;
+  width: 100%;*/
+  height: 100%;
+  /*width: 100vh;*/
 }
 
 h1, h2 {
@@ -17,11 +26,11 @@ h1, h2 {
   padding: 0.5rem 0 0 0;
 }
 
-table {
+/*table {
   width: 95%;
   border-collapse: collapse;
-  margin: 5px auto; /* Center the table */
-}
+  margin: 5px auto; /* Center the table 
+}*/
 
 th, td {
   border: 0px solid #ccc;
@@ -58,10 +67,6 @@ button {
   border: none;
   transition: all 0.2s;
   padding: 0.5rem;
-}
-
-.record{
-color:white;
 }
 
 button:hover { /*, button:focus {*/
@@ -115,7 +120,7 @@ intern::before {
 
 /* Checkbox hack to control information box display */
 
-label {
+.label-aside {
   font-size: 3rem;
   position: absolute;
   top: 2px;
@@ -126,9 +131,13 @@ label {
   border-radius: 10px;
 }
 
-input[type=checkbox] {
+/*input[type=checkbox] {
    position: absolute;
    top: -100px;
+}*/
+
+input[type=checkbox]{
+  margin: 0.5rem;
 }
 
 aside {
@@ -187,12 +196,38 @@ input[type=checkbox]:checked ~ aside {
   fill: yellow; 
 }*/
 
+.container-table{
+  position: relative;
+  overflow: scroll;
+  height:45%;
+  margin-top: 2.5%;
+  margin-bottom: 2.5%;
+}
+
+.cont-table{
+  display: flex;
+  flex-direction: column;
+  /*margin-left: 4.0rem;
+  margin-right: 4.0rem;*/
+  position: relative;
+  overflow: scroll;
+  height: 95%;
+  /*margin-top: 1.0rem;*/
+  /*margin-bottom: 1.0rem;*/
+}
+
 .table {
   display: flex;
   flex-direction: column;
   /*border: 1px solid #ccc;*/
   margin-left: 4.0rem;
   margin-right: 4.0rem;
+  /*overflow: auto;
+  height: 50%;*/
+  /*table-layout: fixed;
+  height: 50%;*/
+  /*height: 30%;*/
+  height: 80%;
 }
 .row {
 display: flex;
@@ -249,4 +284,42 @@ flex:1;
 .texte{
 flex:23;
 margin-left: 0.5rem;
+}
+
+.container-button{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  /*font-size: 22px;*/
+  /*color: white;*/
+  /*padding: 0 20px;*/ /* Pour ajouter un peu d'espace sur les côtés */
+  /*position: relative;*/
+}
+
+.record{
+  color:white;
+  font-size: 22px;
+  width: 6rem;
+  height: 3rem;
+  /*margin: 0 auto;*/
+}
+
+/*.button_dl{
+  color:white;
+  margin-right: 0;
+}*/
+
+
+
+
+.button_dl {
+  position: absolute;
+  right: 0.5rem; /* Positionner à droite avec une marge de 20px */
+  color: white;
+  font-size: 22px;
+  width: 8rem;
+  height: 3rem;
+  /*top: 50%;*/
+  /*transform: translateY(-50%);*/ /* Centrage vertical */
 }

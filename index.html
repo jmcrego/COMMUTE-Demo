@@ -11,15 +11,14 @@
     <h1><img src="pics/SYSTRAN.png" style="vertical-align:middle; height:60px;"> <img src="pics/LIUM.png" style="vertical-align:middle; height:70px;"> COMMUTE - DEMO</h1>
     <br>
     <br>
-    <center>
-      <button class="record" style="font-size: 22px; width: 100px; height: 50px;" id="recordButton" onclick="clickRecordButton()">Start</button> <!--🎙-->
-    </center>
+    <div class="container-button">
+      <button class="record" id="recordButton" onclick="clickRecordButton()">Start</button> <!--🎙-->
+      <button class="button_dl" onclick="afficherTable()">Download</button>
+    </div>
 		<i class="fa-solid fa-play fa-2xl"></i>
+
     
-
-    <button onclick="afficherTable()"></button>
-
-    <div class="table" id="tableResults">
+    <div class="table">
       <div class="row">
         <div class="cell">
           <div class="sub-cell wide"><h3>Transcription</h3></div>
@@ -36,7 +35,11 @@
           <button id="translate_ar" class="sub-cell normal" onclick="changeTranslation(this.id)">Arabic</button>
         </div>
       </div>
+      <div class="cont-table" id="tableResults">
+
+      </div>
     </div>
+
     <!--
     <table id="tableResults">
       <tr>
@@ -70,7 +73,7 @@
     <!--
     </table>
     -->
-    <label for="toggle">&nbsp;&nbsp;🛠&nbsp;&nbsp;</label>
+    <label class="label-aside" for="toggle">&nbsp;&nbsp;🛠&nbsp;&nbsp;</label>
     <input type="checkbox" id="toggle">
     <aside>
       <h2>Projet COMMUTE - Rapid DGA</h2>
@@ -95,6 +98,7 @@
             <p>&nbsp;&nbsp;&nbsp; • Serveur ip: <input type="text" style="width:110px;" value="10.25.0.229" id="IP"> port: <input type="text" style="width:50px;" value="12345" id="PORT"> route: <input type="text" style="width:150px;" value="/pipeline_asr_mt" id="ROUTE"></p>
             <!--p>&nbsp;&nbsp;&nbsp; • Sauvegarder des morceaux d'audio tous les <input type="number" style="width:50px;" value="500"  min="100" max="1000" id="chunk_ms"> millisecondes [100-1000].</p-->
             <p>&nbsp;&nbsp;&nbsp; • Requête envoyée au serveur tous les <input type="number" style="width:50px;" value="1000" min="500" max="5000" id="delay_ms"> millisecondes [500-5000].</p>
+            <p> ➠ <input type="checkbox" id="audioSeparation" name="audioOutputOption"/><label for="audioOutputOption">La piste audio téléchargée est séparé en 2 flux (speaker1, speaker2)</label></p>
           </td>
         </tr>
         <tr>

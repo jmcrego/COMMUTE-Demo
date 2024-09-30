@@ -15,13 +15,14 @@ const audioConstraintEditor = document.getElementById("audioConstraintEditor");
 // listes qui contiennent l'ensemble des informations pour le téléchargement sous forme de fichiers
 let liste_dl_trs = [];
 let liste_dl_trd = [];
+let listeDlOutput = [];
 
 // indices du dernier élément à modifier pour les 2 sources si previous_eos_[mic/intern] == false
-let last_ind_mic;
+let lastIndexMic;
 let last_ind_intern;
 
 // indice global qui garde le numéro du dernier index ajouté
-let last_index;
+let lastIndex;
 
 // deux booléens qui permettent d'indiquer si on a ajouté nos nouveaux blobs aux listes
 let bool_add_mic_blob = false;
@@ -35,6 +36,8 @@ let sending = false;
 // On a une liste pour le microphone/l'audio interne
 let mic_listeBlobs = [];
 let intern_listeBlobs = []
+
+let combined_listeBlobs = [];
 
 let previousEos_mic = false;
 let previousEos_intern = false;
@@ -67,6 +70,14 @@ navigator.mediaDevices
 					}
 				})
 			})
+
+// valeur qui détermine si on télécharge l'audio concaténé ou séparé en 2 flux audio distincts
+let separationAudio = document.getElementById('audioSeparation').checked;
+
+document.getElementById('audioSeparation').addEventListener("change", () => {
+  separationAudio = document.getElementById('audioSeparation').checked;
+});
+
 
 function changeTranscription(cellId) {
   document.getElementById("transcript_pr").style.backgroundColor = 'transparent';
@@ -106,6 +117,8 @@ function clickRecordButton(){
 async function startRecording() {
   recordEnCours = true;
 
+  const audioContext = new AudioContext();
+
   // On définit les options de nos enregistrements
   let options_mic = {
     audio: {
@@ -127,11 +140,34 @@ async function startRecording() {
   const stream_mic = await navigator.mediaDevices.getUserMedia(options_mic);
   const stream_intern = await navigator.mediaDevices.getUserMedia(options_intern);
 
+  const micContext = audioContext.createMediaStreamSource(stream_mic);
+	const internContext = audioContext.createMediaStreamSource(stream_intern);
+
+  const dest = audioContext.createMediaStreamDestination();
+
+  micContext.connect(dest);
+  internContext.connect(dest);
+
+  let combined_stream = dest.stream;
+
   chunkId = 0;
 
   // on définit nos deux recorders
   mic_mediaRecorder = new MediaRecorder(stream_mic);
   intern_mediaRecorder = new MediaRecorder(stream_intern);
+
+  combined_mediaRecorder = new MediaRecorder(combined_stream);
+
+  // On enregistre les 2 pistes en même temps
+  combined_mediaRecorder.ondataavailable = (event) => {
+    if (event.data.size > 0){
+      let combined_blob = new Blob([event.data], {type: 'audio/wav'});
+
+      combined_listeBlobs.push(combined_blob);
+
+      console.log('Ajout des données combinées');
+    }
+  };
   
   // on définit leur comportement lorsqu'ils ont terminé un enregistrement de X secondes
   mic_mediaRecorder.ondataavailable = (event) => {
@@ -158,6 +194,12 @@ async function startRecording() {
       }
     }
   }
+
+  /*combined_mediaRecorder.ondataavailable = (event) => {
+    if (event.data.size > 0){
+      let combined_blob = new Blob([event.data])
+    }
+  }*/
 
   /*mediaRecorder.ondataavailable = (event) => {
     if (event.data.size > 0) {
@@ -195,17 +237,20 @@ async function startRecording() {
   // Start recording
   mic_mediaRecorder.start();
   intern_mediaRecorder.start();
+  combined_mediaRecorder.start();
 
   // stop/restart mediaRecorder to force ondataavailable event (send request to server) every delay_ms milliseconds
   intervalId = setInterval(() => {
     if (mic_mediaRecorder.state === 'recording') { 
       // on arrête les mediaRecorders
       mic_mediaRecorder.stop();
-      intern_mediaRecorder.stop();      
+      intern_mediaRecorder.stop();
+      combined_mediaRecorder.stop();      
       
       // on reprend l'enregistrement
       mic_mediaRecorder.start();
       intern_mediaRecorder.start();
+      combined_mediaRecorder.start();
 
       // on traite les enregistrements (envyer au backend)
       console.log('fin d\'un enregistrement');
@@ -220,6 +265,7 @@ function stopRecording() {
   clearInterval(intervalId);
   mic_mediaRecorder.stop();
   intern_mediaRecorder.stop();
+  combined_mediaRecorder.stop();
 
   console.log('On arrête l\'enregistrement de manière finie');
 }
@@ -302,156 +348,164 @@ function updateResults(responseData){
 
   let rows = conteneur.getElementsByClassName("row");
 
-  let child_mic = document.createElement("div");
-  let child_intern = document.createElement("div");
+  let childMic = document.createElement("div");
+  let childIntern = document.createElement("div");
 
-  child_mic.className = "row";
-  child_intern.className = "row";
+  childMic.className = "row";
+  childIntern.className = "row";
 
-  child_intern.style.backgroundColor = "rgb(0, 160, 219)";
+  childIntern.style.backgroundColor = "rgb(0, 160, 219)";
 
-  let cell_un_mic = document.createElement("div");
-  let cell_deux_mic = document.createElement("div");
-  let cell_un_intern = document.createElement("div");
-  let cell_deux_intern = document.createElement("div");
+  let cellTrsMic = document.createElement("div");
+  let cellTrdMic = document.createElement("div");
+  let cellTrsIntern = document.createElement("div");
+  let cellTrdIntern = document.createElement("div");
 
-  cell_un_mic.className = "cell";
-  cell_deux_mic.className = "cell";
-  cell_un_intern.className = "cell";
-  cell_deux_intern.className = "cell";
+  cellTrsMic.className = "cell";
+  cellTrdMic.className = "cell";
+  cellTrsIntern.className = "cell";
+  cellTrdIntern.className = "cell";
 
-  child_mic.appendChild(cell_un_mic);
-  child_mic.appendChild(cell_deux_mic);
-  child_intern.appendChild(cell_un_intern);
-  child_intern.appendChild(cell_deux_intern);
+  childMic.appendChild(cellTrsMic);
+  childMic.appendChild(cellTrdMic);
+  childIntern.appendChild(cellTrsIntern);
+  childIntern.appendChild(cellTrdIntern);
 
-  let id_ref_bouton_mic = "bouton_mic_" + id_ref;
-  let id_ref_audio_mic = "audio_mic_" + id_ref;
-  let id_svg_trad_mic = "svg_trad_mic_" + id_ref;
+  let idRefBoutonMic = "bouton_mic_" + id_ref;
+  let idRefAudioMic = "audio_mic_" + id_ref;
+  let idSvgTrdMic = "svg_trad_mic_" + id_ref;
 
-  let id_ref_bouton_intern = "bouton_intern_" + id_ref;
-  let id_ref_audio_intern = "audio_intern_" + id_ref;
-  let id_svg_trad_intern = "svg_trad_intern_" + id_ref;
+  let idRefBoutonIntern = "bouton_intern_" + id_ref;
+  let idRefAudioIntern = "audio_intern_" + id_ref;
+  let idSvgTrdIntern = "svg_trad_intern_" + id_ref;
 
 
-  let svg_balise_un_mic = "<audio id=" + id_ref_audio_mic + " type=\"audio/wav\"></audio><svg id =\"" + id_ref_bouton_mic + "\" class =\"svg\" onclick=\"play_audio(" + id_ref + "," + responseData.debut_mic + "," + responseData.fin_mic + ", 'mic')\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(responseData.lang_src_mic);
-  console.log(svg_balise_un_mic);
+  let svgBaliseTrsMic = "<audio id=" + idRefAudioMic + " type=\"audio/wav\"></audio><svg id =\"" + idRefBoutonMic + "\" class =\"svg\" onclick=\"play_audio(" + id_ref + "," + responseData.debut_mic + "," + responseData.fin_mic + ", 'mic')\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(responseData.lang_src_mic);
+  console.log(svgBaliseTrsMic);
 
   let texte = document.createElement("div");
   texte.className = "texte";
   texte.innerHTML = responseData.transcription_mic;
 
-  cell_un_mic.innerHTML = svg_balise_un_mic;
-  cell_un_mic.appendChild(texte);
+  cellTrsMic.innerHTML = svgBaliseTrsMic;
+  cellTrsMic.appendChild(texte);
 
-  let svg_balise_un_intern = "<audio id=" + id_ref_audio_intern + " type=\"audio/wav\"></audio><svg id =\"" + id_ref_bouton_intern + "\" class =\"svg\" onclick=\"play_audio(" + id_ref + "," + responseData.debut_intern + "," + responseData.fin_intern + ", 'intern')\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(responseData.lang_src_intern);
-  console.log(svg_balise_un_intern);
+  let svgBaliseTrsIntern = "<audio id=" + idRefAudioIntern + " type=\"audio/wav\"></audio><svg id =\"" + idRefBoutonIntern + "\" class =\"svg\" onclick=\"play_audio(" + id_ref + "," + responseData.debut_intern + "," + responseData.fin_intern + ", 'intern')\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(responseData.lang_src_intern);
+  console.log(svgBaliseTrsIntern);
 
   texte = document.createElement("div");
   texte.className = "texte";
   //texte.style.backgroundColor = "lightblue";
   texte.innerHTML = responseData.transcription_intern;
 
-  cell_un_intern.innerHTML = svg_balise_un_intern;
-  cell_un_intern.appendChild(texte);
+  cellTrsIntern.innerHTML = svgBaliseTrsIntern;
+  cellTrsIntern.appendChild(texte);
 
 
-  let balise_deux_mic = "<svg id =\"" + id_svg_trad_mic + "\" class =\"svg\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(lang_tgt);
-  cell_deux_mic.innerHTML = balise_deux_mic;
+  let baliseTrdMic = "<svg id =\"" + idSvgTrdMic + "\" class =\"svg\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(lang_tgt);
+  cellTrdMic.innerHTML = baliseTrdMic;
 
   let texte_trad = document.createElement("div");
   texte_trad.className = "texte"
   texte_trad.innerHTML = responseData.translation_mic;
-  cell_deux_mic.appendChild(texte_trad);
+  cellTrdMic.appendChild(texte_trad);
 
-  let balise_deux_intern = "<svg id =\"" + id_svg_trad_intern + "\" class =\"svg\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(lang_tgt);
-  cell_deux_intern.innerHTML = balise_deux_intern;
+  let baliseTrdIntern = "<svg id =\"" + idSvgTrdIntern + "\" class =\"svg\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(lang_tgt);
+  cellTrdIntern.innerHTML = baliseTrdIntern;
 
   texte_trad = document.createElement("div");
   texte_trad.className = "texte"
   texte_trad.innerHTML = responseData.translation_intern;
-  cell_deux_intern.appendChild(texte_trad);
+  cellTrdIntern.appendChild(texte_trad);
 
 
-  // Vérifier s'il y a au moins une div existante
-  if (rows.length > 1) {
-    // Sélectionner les deux dernières div existantes
-    let lastRow = rows[1];
+  if (rows.length > 0){
+    let lastRow = rows[0];
+    
+    let lastMicRow = rows[last_mic];
+    let lastInternRow = rows[last_intern];
 
-    let lastRow_intern = rows[last_intern];
-    let lastRow_mic = rows[last_mic];
+    //console.log('On a déjà des données');
 
-    // on ajoute ou modifie la transcription du microphone
-    if(previousEos_mic){
-      conteneur.insertBefore(child_mic, lastRow);
+    if (previousEos_mic){
+      conteneur.insertBefore(childMic, lastRow);
       
-      last_intern = last_intern + 1;
-      last_mic =  1;
+      //last_intern = last_intern + 1;
+      //last_mic =  0;
 
-      last_index = last_index + 1;
-      last_ind_mic = last_index;
+      //last_index = last_index + 1;
+      //last_ind_mic = last_index;
+
+      lastIndex = lastIndex + 1;
+      lastIndexMic = lastIndex;
+
+      last_mic = 0;
+      last_intern = last_intern + 1;
 
       // push de la nouvelle donnée
-      liste_dl_trs.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "me", "transcription": responseData.transcription_mic, "langue": responseData.lang_src_mic});
-      liste_dl_trd.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "me", "traduction": responseData.translation_mic, "langue": lang_tgt});
+      
+      listeDlOutput.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "transcription": responseData.transcription_mic, "langueSrc": responseData.lang_src_mic, "traduction": responseData.translation_mic, "langueTgt": lang_tgt})
+      //liste_dl_trs.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "transcription": responseData.transcription_mic, "langue": responseData.lang_src_mic});
+      //liste_dl_trd.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "traduction": responseData.translation_mic, "langue": lang_tgt});
 
     }
     else{
-      lastRow_mic.innerHTML = child_mic.innerHTML;
-      console.log('lastRow_mic:', lastRow_mic.innerHTML);
-      console.log('child_mic:', child_mic.innerHTML);
+      lastMicRow.innerHTML = childMic.innerHTML;
+      //console.log('lastRow_mic:', lastMicRow.innerHTML);
+      //console.log('child_mic:', childMic.innerHTML);
 
       // on modifie une donnée précédent
-      liste_dl_trs[last_ind_mic] = {"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "me", "transcription": responseData.transcription_mic, "langue": responseData.lang_src_mic};
-      liste_dl_trd[last_ind_mic] = {"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "me", "traduction": responseData.translation_mic, "langue": lang_tgt};
+      //liste_dl_trs[lastIndexMic] = {"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "transcription": responseData.transcription_mic, "langue": responseData.lang_src_mic};
+      //liste_dl_trd[lastIndexMic] = {"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "traduction": responseData.translation_mic, "langue": lang_tgt};
+      listeDlOutput[lastIndexMic] = {"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "transcription": responseData.transcription_mic, "langueSrc": responseData.lang_src_mic, "traduction": responseData.translation_mic, "langueTgt": lang_tgt};
     }
+    if (previousEos_intern){
+      conteneur.insertBefore(childIntern, lastRow);
+      
+      lastIndex = lastIndex + 1;
+      lastIndexIntern = lastIndex;
 
-    // on ajoute ou modifie la transcription de l'audio interne
-    // on ajoute ou modifie la transcription du microphone
-    if(previousEos_intern){
-      lastRow = rows[1];
-      conteneur.insertBefore(child_intern, lastRow);
-
+      last_intern = 0;
       last_mic = last_mic + 1;
-      last_intern = 1;
 
-      last_index = last_index + 1;
-      last_ind_intern = last_index;
+      listeDlOutput.push({"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "speaker2", "transcription": responseData.transcription_intern, "langueSrc": responseData.lang_src_intern, "traduction": responseData.translation_intern, "langueTgt": lang_tgt});
 
-      // push de la nouvelle ligne
-      liste_dl_trs.push({"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "other", "transcription": responseData.transcription_intern, "langue": responseData.lang_src_intern});
-      liste_dl_trd.push({"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "other", "traduction": responseData.translation_intern, "langue": lang_tgt});
-
+      //liste_dl_trs.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker2", "transcription": responseData.transcription_mic, "langue": responseData.lang_src_mic});
+      //liste_dl_trd.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker2", "traduction": responseData.translation_mic, "langue": lang_tgt});
     }
     else{
-      lastRow_intern.innerHTML = child_intern.innerHTML;
-      console.log('lastRow_intern:', lastRow_intern.innerHTML);
-      console.log('child_intern:', child_intern.innerHTML);
+      lastInternRow.innerHTML = childIntern.innerHTML;
 
-      // on modifie la donnée précédente
-      liste_dl_trs[last_ind_intern] = {"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "other", "transcription": responseData.transcription_intern, "langue": responseData.lang_src_intern};
-      liste_dl_trd[last_ind_intern] = {"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "other", "traduction": responseData.translation_intern, "langue": lang_tgt};
+      listeDlOutput[lastIndexIntern] = {"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "speaker2", "transcription": responseData.transcription_intern, "langueSrc": responseData.lang_src_intern, "traduction": responseData.translation_intern, "langueTgt": lang_tgt};
+
+      //liste_dl_trs[lastIndexIntern] = {"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "speaker2", "transcription": responseData.transcription_intern, "langue": responseData.lang_src_intern};
+      //liste_dl_trd[lastIndexIntern] = {"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "speaker2", "traduction": responseData.translation_intern, "langue": lang_tgt};
     }
+  }
+  else{
+    //console.log('On n\'a pas encore ajouté de données');
+    //console.log('rowsMic.lenght : ', rowsMic.length);
+    //console.log('rowsIntern.length :')
+    
+    conteneur.appendChild(childIntern);
+    conteneur.appendChild(childMic);
 
-  } else {
-    // Si aucune div existante, ajouter la nouvelle div à la fin du conteneur
-    conteneur.appendChild(child_intern);
-    conteneur.appendChild(child_mic);
+    lastIndex = 0;
+    lastIndexMic = 0;
+    lastIndexIntern = 1;
 
-    last_intern = 1;
-    last_mic = 2;
+    last_mic = 1;
+    last_intern = 0;
 
-    // On ajoute nos données courrantes
-    liste_dl_trs.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "me", "transcription": responseData.transcription_mic, "langue": responseData.lang_src_mic});
-    liste_dl_trs.push({"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "other", "transcription": responseData.transcription_intern, "langue": responseData.lang_src_intern});
+    listeDlOutput.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "transcription": responseData.transcription_mic, "langueSrc": responseData.lang_src_mic, "traduction": responseData.translation_mic, "langueTgt": lang_tgt});
+    listeDlOutput.push({"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "speaker2", "transcription": responseData.transcription_intern, "langueSrc": responseData.lang_src_intern, "traduction": responseData.translation_intern, "langueTgt": lang_tgt});
 
-    liste_dl_trd.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "me", "traduction": responseData.translation_mic, "langue": lang_tgt});
-    liste_dl_trd.push({"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "other", "traduction": responseData.translation_intern, "langue": lang_tgt});
+    //liste_dl_trs.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "transcription": responseData.transcription_mic, "langue": responseData.lang_src_mic});
+    //liste_dl_trs.push({"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "speaker2", "transcription": responseData.transcription_intern, "langue": responseData.lang_src_intern});
 
-    last_ind_mic = 0;
-    last_ind_intern = 1;
+    //liste_dl_trd.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "traduction": responseData.translation_mic, "langue": lang_tgt});
+    //liste_dl_trd.push({"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "speaker2", "traduction": responseData.translation_intern, "langue": lang_tgt});
 
-    last_index = 1;
   }
 
   /*concatenateBlobs(listeBlobs).then(combinedBlob => {
@@ -472,9 +526,9 @@ function updateResults(responseData){
 
     url = URL.createObjectURL(combinedBlob);
 
-    let mic_audio = document.getElementById(id_ref_audio_mic);
+    let mic_audio = document.getElementById(idRefAudioMic);
 
-    console.log('id_ref_audio_mic', id_ref_audio_mic);
+    console.log('id_ref_audio_mic', idRefAudioMic);
     console.log('mic_audio', mic_audio);
 
     mic_audio.src = url;
@@ -485,9 +539,9 @@ function updateResults(responseData){
 
     url = URL.createObjectURL(combinedBlob);
 
-    let intern_audio = document.getElementById(id_ref_audio_intern);
+    let intern_audio = document.getElementById(idRefAudioIntern);
 
-    console.log('id_ref_audio_intern', id_ref_audio_intern);
+    console.log('id_ref_audio_intern', idRefAudioIntern);
     console.log('intern_audio', intern_audio);
 
     intern_audio.src = url;
@@ -711,71 +765,132 @@ async function concatenateBlobs(blobs) {
 }
 
 function afficherTable(){
-  console.log('liste_trs', liste_dl_trs);
-  console.log('liste_trd', liste_dl_trd);
+  //console.log('liste_trs', liste_dl_trs);
+  //console.log('liste_trd', liste_dl_trd);
 
 
-  let liste_trs = [];
-  let liste_trd = [];
+  /*let liste_trs = [];
+  let liste_trd = [];*/
+  let liste = [];
 
-  for(let i=0; i < last_index+1; i=i+1){
-    let elem_trs = liste_dl_trs[i];
-    let elem_trd = liste_dl_trd[i];
+  for(let i=0; i < lastIndex+1; i=i+1){
+    //let elem_trs = liste_dl_trs[i];
+    //let elem_trd = liste_dl_trd[i];
 
-    let txt_trs = "[" + elem_trd['debut'].toFixed(2) + ":" + elem_trs['fin'].toFixed(2) + "] " + elem_trs['langue'] + " " + elem_trs['source'] + ": " + elem_trs['transcription'] +"\n";
-    let txt_trd = "[" + elem_trd['debut'].toFixed(2) + ":" + elem_trs['fin'].toFixed(2) + "] " + elem_trs['langue'] + " " + elem_trs['source'] + ": " + elem_trs['traduction'] +"\n";
+    let elem = listeDlOutput[i];
 
-    liste_trs.push(txt_trs);
-    liste_trd.push(txt_trd);
+    //let txt_trs = "[" + elem_trd['debut'].toFixed(2) + ":" + elem_trs['fin'].toFixed(2) + "] " + elem_trs['langue'] + " " + elem_trs['source'] + ": " + elem_trs['transcription'] +"\n";
+    //let txt_trd = "[" + elem_trd['debut'].toFixed(2) + ":" + elem_trs['fin'].toFixed(2) + "] " + elem_trs['langue'] + " " + elem_trs['source'] + ": " + elem_trs['traduction'] +"\n";
+
+    let txt = "[" + elem['debut'].toFixed(2) + ":" + elem['fin'].toFixed(2) + "] " + elem['source'] + " <" +  elem['langue']  + "> " + elem['transcription'] + " <" + elem['langueTgt'] + "> " + elem['tranduction'] + "\n";
+
+    //liste_trs.push(txt_trs);
+    //liste_trd.push(txt_trd);
+
+    liste.push(txt);
 
   }
 
-  console.log(liste_trs);
-  console.log(liste_trd);
-
-
-  /*let elem = rows[2];
-  let texts = elem.getElementsByClassName('texte');
-  console.log(rows);
-  console.log(elem);
-  console.log(texts);
-
-  for(let i=0; i < texts.length; i = i + 1){
-    console.log(texts[i].innerHTML);
-  }*/
-
-  const trs_file = new File(liste_trs, 'trs/trs.txt', {
+  const txt_file = new File(liste, 'recap.txt', {
     type: 'text/plain',
   });
 
-  const trd_file = new File(liste_trd, 'trd/trd.txt', {
+  /*const trd_file = new File(liste_trd, 'trd.txt', {
     type: 'text/plain',
-  });
+  });*/
+  if (separationAudio){
+    concatenateBlobs(mic_listeBlobs).then(combinedBlob => {
+      const mic_audio_file = new File([combinedBlob], 'mic.wav', {
+        type: 'audio/wav',
+      });
+    
+      const link_mic_audio = document.createElement('a');
+  
+      const url_mic_audio = URL.createObjectURL(mic_audio_file);
+  
+      link_mic_audio.href = url_mic_audio;
+  
+      link_mic_audio.download = mic_audio_file.name;
+  
+      document.body.appendChild(link_mic_audio);
+  
+      link_mic_audio.click();
+  
+      document.body.removeChild(link_mic_audio);
+      
+      window.URL.revokeObjectURL(url_mic_audio);  
+    });
+  
+    concatenateBlobs(intern_listeBlobs).then(combinedBlob => {
+      const intern_audio_file = new File([combinedBlob], 'intern.wav', {
+        type: 'audio/wav',
+      })
+  
+      const link_intern_audio = document.createElement('a');
+  
+      const url_intern_audio = URL.createObjectURL(intern_audio_file);
+  
+      link_intern_audio.href = url_intern_audio;
+  
+      link_intern_audio.download = intern_audio_file.name;
+  
+      document.body.appendChild(link_intern_audio);
+  
+      link_intern_audio.click();
+  
+      document.body.removeChild(link_intern_audio);
+      
+      window.URL.revokeObjectURL(url_intern_audio);
+    });
+  }
+  else{
+    concatenateBlobs(combined_listeBlobs).then(combinedBlob => {
+      const combined_audio_file = new File([combinedBlob], 'combined.wav', {
+        type: 'audio/wav',
+      })
+  
+      const link_combined_audio = document.createElement('a');
+  
+      const url_combined_audio = URL.createObjectURL(combined_audio_file);
+  
+      link_combined_audio.href = url_combined_audio;
+  
+      link_combined_audio.download = combined_audio_file.name;
+  
+      document.body.appendChild(link_combined_audio);
+  
+      link_combined_audio.click();
+  
+      document.body.removeChild(link_combined_audio);
+      
+      window.URL.revokeObjectURL(url_combined_audio);
+    });
+  }
+
 
   // on gère le download ici
 
-  const link_trs = document.createElement('a');
-  const link_trd = document.createElement('a');
+  const link_txt = document.createElement('a');
+  //const link_trd = document.createElement('a');
 
-  const url_trs = URL.createObjectURL(trs_file);
-  const url_trd = URL.createObjectURL(trd_file);
+  const url_txt = URL.createObjectURL(txt_file);
+  //const url_trd = URL.createObjectURL(trd_file);
 
-  link_trs.href = url_trs;
-  link_trd.href = url_trd;
+  link_txt.href = url_txt;
+  //link_trd.href = url_trd;
 
-  link_trs.download = trs_file.name;
-  link_trd.download = trd_file.name;
+  link_txt.download = txt_file.name;
+  //link_trd.download = trd_file.name;
 
-  document.body.appendChild(link_trs);
-  document.body.appendChild(link_trd);
+  document.body.appendChild(link_txt);
+  //document.body.appendChild(link_trd);
 
-  link_trs.click();
-  link_trd.click();
+  link_txt.click();
+  //link_trd.click();
 
-  document.body.removeChild(link_trs);
-  document.body.removeChild(link_trd);
+  document.body.removeChild(link_txt);
+  //document.body.removeChild(link_trd);
   
-  
-  window.URL.revokeObjectURL(url_trs);
-  window.URL.revokeObjectURL(url_trd);
+  window.URL.revokeObjectURL(url_txt);
+  //window.URL.revokeObjectURL(url_trd);
 }
