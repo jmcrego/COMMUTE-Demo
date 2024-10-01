@@ -63,6 +63,8 @@ def parse_transcription(segments, info):
     ending_id = -1 #transcription is composed of words up to ending_id
     ending = 0 #consume up to ending floats
     eos = False #found an EndOfSentence
+    #logging.info('words')
+    #logging.info(words)
     for i in range(len(words)):
         transcription.append(words[i].word)
         curr_end = words[i].end
@@ -82,12 +84,14 @@ def parse_transcription(segments, info):
 
     if ending_id == -1 and len(words) and audio_duration > duration: 
         logging.debug('eos forced by audio duration={} sec (transcription with words)'.format(audio_duration))
+        #logging.info('eos forced by audio duration={} sec (transcription with words)'.format(audio_duration))
         curr_end = words[-1].end
         next_start = audio_duration
         ending_id = len(words) - 1
         #ending = int((0.75*(next_start-curr_end)+curr_end) * samples_per_second)
         ending = int(0.9 * (next_start) * samples_per_second)
-        eos = True
+        eos = True # Version de Josep => à discuter pour voir si on peut modifier ça
+        #eos = False
 
     logging.debug('transcription (complete) of {:.2f} sec = {}'.format(audio_duration, ''.join(transcription).strip()))
 
@@ -99,7 +103,9 @@ def parse_transcription(segments, info):
     ### no words transcribed... audio_duration sufficiently large (>= silence)
     if len(words) == 0 and audio_duration >= silence:
         logging.debug('silent audio (consumes audio)')
+        logging.info('silent audio (consumes audio)')
         ending = int(0.75*audio_duration*samples_per_second)
+        eos=True
         return '', eos, ending
 
     ### return all words, end of sentence not found and do not consume current audio
@@ -110,7 +116,7 @@ def transcribe(data_float32, lang_src, beam_size=5, history=None, task='transcri
     segments, info = Transcriber.transcribe(data_float32, language=language, task=task, beam_size=beam_size, vad_filter=True, word_timestamps=True, initial_prompt=history)
     transcription, eos, ending = parse_transcription(segments, info)
     lang_src = info.language if len(transcription) else lang_src 
-    logging.info('SERVER: transcription lang_src = {}, eos = {} ending = {}, transcription = {}'.format(info.language, eos, ending, transcription))
+    #logging.info('SERVER: transcription lang_src = {}, eos = {} ending = {}, transcription = {}'.format(info.language, eos, ending, transcription))
     return transcription, eos, ending, lang_src
 
 def translate(transcription, lang_tgt):
@@ -120,7 +126,7 @@ def translate(transcription, lang_tgt):
     input_stream = "｟" + lang_tgt + "｠" + " " + transcription
     results = Translator.translate_batch([Tokenizer(input_stream)])
     translation = Tokenizer.detokenize(results[0].hypotheses[0])
-    logging.info('SERVER: translation = {}'.format(translation))
+    #logging.info('SERVER: translation = {}'.format(translation))
     return translation
 
 def request_data(request_json):
@@ -181,21 +187,21 @@ async def handle_connection(websocket, path):
 
                 ### reduce audio ###
                 audio_mic = audio_mic[ending_mic:]
-                logging.info('SERVER: messg delay={:.2f}, audio format={:.2f}, audio duration={:.2f}, transcription={:.2f}, tanslation={:.2f}'.format(
-                    time_request_delay, 
-                    time_formatting, 
-                    audio_duration_mic, 
-                    time_transcribe, 
-                    time_translate))
+                #logging.info('SERVER: messg delay={:.2f}, audio format={:.2f}, audio duration={:.2f}, transcription={:.2f}, tanslation={:.2f}'.format(
+                #    time_request_delay, 
+                #    time_formatting, 
+                #    audio_duration_mic, 
+                #    time_transcribe, 
+                #    time_translate))
 
             if ending_intern:
                 audio_intern = audio_intern[ending_intern:]
-                logging.info('SERVER: messg delay={:.2f}, audio format={:.2f}, audio duration={:.2f}, transcription={:.2f}, tanslation={:.2f}'.format(
-                    time_request_delay, 
-                    time_formatting, 
-                    audio_duration_intern, 
-                    time_transcribe, 
-                    time_translate))
+                #logging.info('SERVER: messg delay={:.2f}, audio format={:.2f}, audio duration={:.2f}, transcription={:.2f}, tanslation={:.2f}'.format(
+                #    time_request_delay, 
+                #    time_formatting, 
+                #    audio_duration_intern, 
+                #    time_transcribe, 
+                #    time_translate))
 
                 
             ### Création de la réponse au client JS ###
@@ -206,6 +212,15 @@ async def handle_connection(websocket, path):
             if ending_intern:
                 fin_transcription_intern = fin_transcription_intern + (ending_intern/samples_per_second)
             
+            logging.info('MSG: trs_inter={}, trs_mic={}, eos_inter={}, eos_mic={}'.format(
+                transcription_intern,
+                transcription_mic,
+                eos_intern,
+                eos_mic))
+            logging.info('MSG BIS: langSrcMic={}, langSrcIntern={}'.format(
+                lang_src_mic,
+                lang_src_intern))
+
             response_dict = {'transcription_intern': transcription_intern, 'translation_intern': translation_intern, 'transcription_mic': transcription_mic, 'translation_mic':translation_mic, 'eos_intern':eos_intern, 'eos_mic': eos_mic, 'lang_src_intern': lang_src_intern, 'lang_src_mic': lang_src_mic, 'debut_intern': debut_transcription_intern, 'fin_intern': fin_transcription_intern, 'debut_mic': debut_transcription_mic, 'fin_mic': fin_transcription_mic}
             
             debut_transcription_mic = fin_transcription_mic

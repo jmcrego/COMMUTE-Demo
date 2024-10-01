@@ -18,8 +18,8 @@ let liste_dl_trd = [];
 let listeDlOutput = [];
 
 // indices du dernier élément à modifier pour les 2 sources si previous_eos_[mic/intern] == false
-let lastIndexMic;
-let last_ind_intern;
+let lastIndexMic = -1;
+let lastIndexIntern = -1;
 
 // indice global qui garde le numéro du dernier index ajouté
 let lastIndex;
@@ -46,8 +46,8 @@ let previousEos_intern = false;
 let id_ref = 0
 
 // Indice des dernières paires transcription-traduction
-let last_mic = 0;
-let last_intern = 0;
+let last_mic = -1;
+let last_intern = -1;
 
 // Nos deux variables dans lesquelles on stocke les devices
 let myMicrophoneDeviceId = null;
@@ -56,6 +56,9 @@ let myInternDeviceId;
 // On définit 2 variables qui vont contenir les blobs du dernier enregistrement
 let mic_blob;
 let intern_blob; 
+
+let iterationAddedMicElement = false;
+let iterationAddedInternElement = false;
 
 // On récupère les 2 devices que nous allons utiliser pour enregistrer la voix/l'audio interne
 navigator.mediaDevices
@@ -165,7 +168,7 @@ async function startRecording() {
 
       combined_listeBlobs.push(combined_blob);
 
-      console.log('Ajout des données combinées');
+      //console.log('Ajout des données combinées');
     }
   };
   
@@ -175,7 +178,7 @@ async function startRecording() {
       mic_blob = new Blob([event.data], {type: 'audio/wav'});
       mic_listeBlobs.push(mic_blob);
       bool_add_mic_blob = true;
-      console.log('Ajout des données microphones');
+      //console.log('Ajout des données microphones');
 
       if(bool_add_intern_blob){
         sendInformations();
@@ -188,7 +191,7 @@ async function startRecording() {
       intern_blob = new Blob([event.data], {type: 'audio/wav'});
       intern_listeBlobs.push(intern_blob);
       bool_add_intern_blob = true;
-      console.log('Ajout des données internes');
+      //console.log('Ajout des données internes');
       if(bool_add_mic_blob){
         sendInformations();
       }
@@ -230,7 +233,7 @@ async function startRecording() {
   websocket.onclose = (event) => { console.log('CLIENT connection closed.'); };
   websocket.onmessage = (event) => { 
     const responseData = JSON.parse(event.data);
-    console.log('CLIENT Received=',responseData);
+    //console.log('CLIENT Received=',responseData);
     updateResults(responseData);
   };
 
@@ -253,7 +256,7 @@ async function startRecording() {
       combined_mediaRecorder.start();
 
       // on traite les enregistrements (envyer au backend)
-      console.log('fin d\'un enregistrement');
+      //console.log('fin d\'un enregistrement');
     }
   }, document.getElementById("delay_ms").value);
 }
@@ -267,7 +270,7 @@ function stopRecording() {
   intern_mediaRecorder.stop();
   combined_mediaRecorder.stop();
 
-  console.log('On arrête l\'enregistrement de manière finie');
+  //console.log('On arrête l\'enregistrement de manière finie');
 }
 
 function sendInformations(){
@@ -277,7 +280,7 @@ function sendInformations(){
     bool_add_intern_blob = false;
     bool_add_mic_blob = false;
 
-    console.log('On envoie un message');
+    //console.log('On envoie un message');
     // On définit deux variables dans lesquelles on stocke le résultat de l'enregistrement
     let mic_audioData;
     let intern_audioData;
@@ -307,18 +310,18 @@ function sendInformations(){
     }
 
     // On lit les deux blobs
-    console.log(mic_blob);
-    console.log(intern_blob);
+    //console.log(mic_blob);
+    //console.log(intern_blob);
 
-    console.log(mic_listeBlobs);
-    console.log(intern_listeBlobs);
+    //console.log(mic_listeBlobs);
+    //console.log(intern_listeBlobs);
 
     mic_audioReader.readAsDataURL(mic_blob);
     intern_audioReader.readAsDataURL(intern_blob);
 
   }
   else{
-    console.log('Envoie déjà en cours !');
+    //console.log('Envoie déjà en cours !');
   }
 
 }
@@ -330,248 +333,311 @@ function sendData(mic_audioData, intern_audioData){
     const timestamp = Date.now();
 
     dataToSend = {mic_audioData, intern_audioData, chunkId, lang_src, lang_tgt, timestamp};
-    console.log(JSON.stringify(dataToSend));
+    //console.log(JSON.stringify(dataToSend));
     websocket.send(JSON.stringify(dataToSend));
     chunkId++;
 
     envoie_en_cours = false;
     sending = false;
-    console.log('envoie réussi:', chunkId - 1);
+    //console.log('envoie réussi:', chunkId - 1);
   }
   else{
-    console.log('sending en cours');
+    //console.log('sending en cours');
   }
 }
 
 function updateResults(responseData){
+  //console.log('Entree update num: ', id_ref);
+  //console.log('responseData: ', responseData);
+
   let conteneur = document.getElementById('tableResults');
 
   let rows = conteneur.getElementsByClassName("row");
 
-  let childMic = document.createElement("div");
-  let childIntern = document.createElement("div");
-
-  childMic.className = "row";
-  childIntern.className = "row";
-
-  childIntern.style.backgroundColor = "rgb(0, 160, 219)";
-
-  let cellTrsMic = document.createElement("div");
-  let cellTrdMic = document.createElement("div");
-  let cellTrsIntern = document.createElement("div");
-  let cellTrdIntern = document.createElement("div");
-
-  cellTrsMic.className = "cell";
-  cellTrdMic.className = "cell";
-  cellTrsIntern.className = "cell";
-  cellTrdIntern.className = "cell";
-
-  childMic.appendChild(cellTrsMic);
-  childMic.appendChild(cellTrdMic);
-  childIntern.appendChild(cellTrsIntern);
-  childIntern.appendChild(cellTrdIntern);
-
-  let idRefBoutonMic = "bouton_mic_" + id_ref;
-  let idRefAudioMic = "audio_mic_" + id_ref;
-  let idSvgTrdMic = "svg_trad_mic_" + id_ref;
-
-  let idRefBoutonIntern = "bouton_intern_" + id_ref;
-  let idRefAudioIntern = "audio_intern_" + id_ref;
-  let idSvgTrdIntern = "svg_trad_intern_" + id_ref;
-
-
-  let svgBaliseTrsMic = "<audio id=" + idRefAudioMic + " type=\"audio/wav\"></audio><svg id =\"" + idRefBoutonMic + "\" class =\"svg\" onclick=\"play_audio(" + id_ref + "," + responseData.debut_mic + "," + responseData.fin_mic + ", 'mic')\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(responseData.lang_src_mic);
-  console.log(svgBaliseTrsMic);
-
-  let texte = document.createElement("div");
-  texte.className = "texte";
-  texte.innerHTML = responseData.transcription_mic;
-
-  cellTrsMic.innerHTML = svgBaliseTrsMic;
-  cellTrsMic.appendChild(texte);
-
-  let svgBaliseTrsIntern = "<audio id=" + idRefAudioIntern + " type=\"audio/wav\"></audio><svg id =\"" + idRefBoutonIntern + "\" class =\"svg\" onclick=\"play_audio(" + id_ref + "," + responseData.debut_intern + "," + responseData.fin_intern + ", 'intern')\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(responseData.lang_src_intern);
-  console.log(svgBaliseTrsIntern);
-
-  texte = document.createElement("div");
-  texte.className = "texte";
-  //texte.style.backgroundColor = "lightblue";
-  texte.innerHTML = responseData.transcription_intern;
-
-  cellTrsIntern.innerHTML = svgBaliseTrsIntern;
-  cellTrsIntern.appendChild(texte);
-
-
-  let baliseTrdMic = "<svg id =\"" + idSvgTrdMic + "\" class =\"svg\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(lang_tgt);
-  cellTrdMic.innerHTML = baliseTrdMic;
-
-  let texte_trad = document.createElement("div");
-  texte_trad.className = "texte"
-  texte_trad.innerHTML = responseData.translation_mic;
-  cellTrdMic.appendChild(texte_trad);
-
-  let baliseTrdIntern = "<svg id =\"" + idSvgTrdIntern + "\" class =\"svg\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(lang_tgt);
-  cellTrdIntern.innerHTML = baliseTrdIntern;
-
-  texte_trad = document.createElement("div");
-  texte_trad.className = "texte"
-  texte_trad.innerHTML = responseData.translation_intern;
-  cellTrdIntern.appendChild(texte_trad);
-
-
-  if (rows.length > 0){
-    let lastRow = rows[0];
+  if (responseData.transcription_mic != ""){
+    //console.log("Transcription microphone non vide");
     
-    let lastMicRow = rows[last_mic];
-    let lastInternRow = rows[last_intern];
+    let childMic = document.createElement("div");
+    childMic.className = "row";
 
-    //console.log('On a déjà des données');
+    let cellTrsMic = document.createElement("div");
+    let cellTrdMic = document.createElement("div");
 
-    if (previousEos_mic){
-      conteneur.insertBefore(childMic, lastRow);
-      
-      //last_intern = last_intern + 1;
-      //last_mic =  0;
+    cellTrsMic.className = "cell";
+    cellTrdMic.className = "cell";
 
-      //last_index = last_index + 1;
-      //last_ind_mic = last_index;
+    childMic.appendChild(cellTrsMic);
+    childMic.appendChild(cellTrdMic);
 
-      lastIndex = lastIndex + 1;
-      lastIndexMic = lastIndex;
+    let idRefBoutonMic = "bouton_mic_" + id_ref;
+    let idRefAudioMic = "audio_mic_" + id_ref;
+    let idSvgTrdMic = "svg_trad_mic_" + id_ref;
+
+    let svgBaliseTrsMic = "<audio id=" + idRefAudioMic + " type=\"audio/wav\"></audio><svg id =\"" + idRefBoutonMic + "\" class =\"svg\" onclick=\"play_audio(" + id_ref + "," + responseData.debut_mic + "," + responseData.fin_mic + ", 'mic')\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(responseData.lang_src_mic);
+    //console.log(svgBaliseTrsMic);
+
+    let texte = document.createElement("div");
+    texte.className = "texte";
+    texte.innerHTML = responseData.transcription_mic;
+
+    cellTrsMic.innerHTML = svgBaliseTrsMic;
+    cellTrsMic.appendChild(texte);
+
+    let baliseTrdMic = "<svg id =\"" + idSvgTrdMic + "\" class =\"svg\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(lang_tgt);
+    cellTrdMic.innerHTML = baliseTrdMic;
+
+    let texte_trad = document.createElement("div");
+    texte_trad.className = "texte"
+    texte_trad.innerHTML = responseData.translation_mic;
+    cellTrdMic.appendChild(texte_trad);
+
+    if (rows.length > 0){
+      let lastRow = rows[0];
+
+      if (previousEos_mic || last_mic == -1){
+        conteneur.insertBefore(childMic, lastRow);
+
+        iterationAddedMicElement = true;
+
+        lastIndex = lastIndex + 1;
+        lastIndexMic = lastIndex;
+
+        last_mic = 0;
+        last_intern = last_intern + 1;
+
+        // push de la nouvelle donnée
+        
+        listeDlOutput.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "transcription": responseData.transcription_mic, "langueSrc": responseData.lang_src_mic, "traduction": responseData.translation_mic, "langueTgt": lang_tgt});
+      }
+      else{
+        let lastMicRow = rows[last_mic];
+        lastMicRow.innerHTML = childMic.innerHTML;
+
+        listeDlOutput[lastIndexMic] = {"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "transcription": responseData.transcription_mic, "langueSrc": responseData.lang_src_mic, "traduction": responseData.translation_mic, "langueTgt": lang_tgt};
+      }
+    }
+    else{
+      conteneur.appendChild(childMic);
+
+      iterationAddedMicElement = true;
 
       last_mic = 0;
-      last_intern = last_intern + 1;
 
-      // push de la nouvelle donnée
-      
-      listeDlOutput.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "transcription": responseData.transcription_mic, "langueSrc": responseData.lang_src_mic, "traduction": responseData.translation_mic, "langueTgt": lang_tgt})
-      //liste_dl_trs.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "transcription": responseData.transcription_mic, "langue": responseData.lang_src_mic});
-      //liste_dl_trd.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "traduction": responseData.translation_mic, "langue": lang_tgt});
+      lastIndex = 0;
+      lastIndexMic = lastIndex;
 
+      listeDlOutput.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "transcription": responseData.transcription_mic, "langueSrc": responseData.lang_src_mic, "traduction": responseData.translation_mic, "langueTgt": lang_tgt});
+    }
+
+    if (responseData.eos_mic){
+      concatenateBlobs(mic_listeBlobs).then(combinedBlob => {
+        //console.log('mic_combinedBlob', combinedBlob);
+    
+        url = URL.createObjectURL(combinedBlob);
+    
+        let mic_audio = document.getElementById(idRefAudioMic);
+    
+        console.log('id_ref_audio_mic', idRefAudioMic);
+        console.log('mic_audio', mic_audio);
+    
+        mic_audio.src = url;
+      });
+    }
+
+    //iterationAddedElement = true;
+  }
+  else {
+    //console.log("Transcription microphone vide");
+
+    if (responseData.eos_mic && iterationAddedMicElement && last_mic > -1){
+      let lastMicRow = rows[last_mic];
+
+      console.log('InnerHtml: ', lastMicRow.innerHTML);
+
+      lastMicRow.remove();
+
+      if (last_mic < last_intern){
+        last_intern = last_intern - 1;
+      }
+
+      if (lastIndexMic < lastIndexIntern){
+        lastIndexIntern = lastIndexIntern - 1;
+      }
+
+      // on enleve l'élément
+      console.log('Liste: ', listeDlOutput);
+      console.log('listeDlOutput elem à supprimer: ', listeDlOutput[lastIndexMic]);
+      let elem = listeDlOutput.splice(lastIndexMic, 1);
+      console.log('Elem a supprimer: ', elem);
+      console.log('verif elimination: ', listeDlOutput[lastIndexMic] != elem);
+      console.log('Liste après suppression: ', listeDlOutput);
+
+      lastIndex = lastIndex - 1;
+
+      lastIndexMic = -1;
+
+      last_mic = -1;
+
+      //iterationAddedElement = false;
+
+    }
+  }
+  
+  if (responseData.transcription_intern != ""){
+    //console.log("Transcription interne non vide");
+    
+    let childIntern = document.createElement("div");
+    childIntern.className = "row";
+
+    childIntern.style.backgroundColor = "rgb(0, 160, 219)";
+
+    let cellTrsIntern = document.createElement("div");
+    let cellTrdIntern = document.createElement("div");
+
+    cellTrsIntern.className = "cell";
+    cellTrdIntern.className = "cell";
+
+    childIntern.appendChild(cellTrsIntern);
+    childIntern.appendChild(cellTrdIntern);
+
+    let idRefBoutonIntern = "bouton_intern_" + id_ref;
+    let idRefAudioIntern = "audio_intern_" + id_ref;
+    let idSvgTrdIntern = "svg_trad_intern_" + id_ref;
+
+    let svgBaliseTrsIntern = "<audio id=" + idRefAudioIntern + " type=\"audio/wav\"></audio><svg id =\"" + idRefBoutonIntern + "\" class =\"svg\" onclick=\"play_audio(" + id_ref + "," + responseData.debut_intern + "," + responseData.fin_intern + ", 'intern')\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(responseData.lang_src_intern);
+    //console.log(svgBaliseTrsIntern);
+
+    texte = document.createElement("div");
+    texte.className = "texte";
+    texte.innerHTML = responseData.transcription_intern;
+
+    cellTrsIntern.innerHTML = svgBaliseTrsIntern;
+    cellTrsIntern.appendChild(texte);
+  
+    let baliseTrdIntern = "<svg id =\"" + idSvgTrdIntern + "\" class =\"svg\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(lang_tgt);
+    cellTrdIntern.innerHTML = baliseTrdIntern;
+
+    texte_trad = document.createElement("div");
+    texte_trad.className = "texte"
+    texte_trad.innerHTML = responseData.translation_intern;
+    cellTrdIntern.appendChild(texte_trad);
+
+    if (rows.length > 0){
+      let lastRow = rows[0];
+
+      if (previousEos_intern || last_intern == -1){
+        conteneur.insertBefore(childIntern, lastRow);
+
+        iterationAddedInternElement = true;
+
+        lastIndex = lastIndex + 1;
+        lastIndexIntern = lastIndex;
+
+        last_intern = 0;
+        last_mic = last_mic + 1;
+
+        // push de la nouvelle donnée
+        
+        listeDlOutput.push({"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "speaker2", "transcription": responseData.transcription_intern, "langueSrc": responseData.lang_src_intern, "traduction": responseData.translation_intern, "langueTgt": lang_tgt});
+      }
+      else{
+        let lastInternRow = rows[last_intern];
+        lastInternRow.innerHTML = childIntern.innerHTML;
+
+        listeDlOutput[lastIndexIntern] = {"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "speaker2", "transcription": responseData.transcription_intern, "langueSrc": responseData.lang_src_intern, "traduction": responseData.translation_intern, "langueTgt": lang_tgt};
+      }
     }
     else{
-      lastMicRow.innerHTML = childMic.innerHTML;
-      //console.log('lastRow_mic:', lastMicRow.innerHTML);
-      //console.log('child_mic:', childMic.innerHTML);
+      conteneur.appendChild(childIntern);
 
-      // on modifie une donnée précédent
-      //liste_dl_trs[lastIndexMic] = {"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "transcription": responseData.transcription_mic, "langue": responseData.lang_src_mic};
-      //liste_dl_trd[lastIndexMic] = {"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "traduction": responseData.translation_mic, "langue": lang_tgt};
-      listeDlOutput[lastIndexMic] = {"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "transcription": responseData.transcription_mic, "langueSrc": responseData.lang_src_mic, "traduction": responseData.translation_mic, "langueTgt": lang_tgt};
-    }
-    if (previousEos_intern){
-      conteneur.insertBefore(childIntern, lastRow);
-      
-      lastIndex = lastIndex + 1;
-      lastIndexIntern = lastIndex;
+      iterationAddedInternElement = true;
 
       last_intern = 0;
-      last_mic = last_mic + 1;
+
+      lastIndex = 0;
+      lastIndexIntern = lastIndex;
 
       listeDlOutput.push({"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "speaker2", "transcription": responseData.transcription_intern, "langueSrc": responseData.lang_src_intern, "traduction": responseData.translation_intern, "langueTgt": lang_tgt});
-
-      //liste_dl_trs.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker2", "transcription": responseData.transcription_mic, "langue": responseData.lang_src_mic});
-      //liste_dl_trd.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker2", "traduction": responseData.translation_mic, "langue": lang_tgt});
     }
-    else{
-      lastInternRow.innerHTML = childIntern.innerHTML;
 
-      listeDlOutput[lastIndexIntern] = {"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "speaker2", "transcription": responseData.transcription_intern, "langueSrc": responseData.lang_src_intern, "traduction": responseData.translation_intern, "langueTgt": lang_tgt};
-
-      //liste_dl_trs[lastIndexIntern] = {"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "speaker2", "transcription": responseData.transcription_intern, "langue": responseData.lang_src_intern};
-      //liste_dl_trd[lastIndexIntern] = {"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "speaker2", "traduction": responseData.translation_intern, "langue": lang_tgt};
-    }
-  }
-  else{
-    //console.log('On n\'a pas encore ajouté de données');
-    //console.log('rowsMic.lenght : ', rowsMic.length);
-    //console.log('rowsIntern.length :')
+    if (responseData.eos_intern){
+      concatenateBlobs(intern_listeBlobs).then(combinedBlob => {
+        //console.log('intern_combinedBlob', combinedBlob);
     
-    conteneur.appendChild(childIntern);
-    conteneur.appendChild(childMic);
-
-    lastIndex = 0;
-    lastIndexMic = 0;
-    lastIndexIntern = 1;
-
-    last_mic = 1;
-    last_intern = 0;
-
-    listeDlOutput.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "transcription": responseData.transcription_mic, "langueSrc": responseData.lang_src_mic, "traduction": responseData.translation_mic, "langueTgt": lang_tgt});
-    listeDlOutput.push({"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "speaker2", "transcription": responseData.transcription_intern, "langueSrc": responseData.lang_src_intern, "traduction": responseData.translation_intern, "langueTgt": lang_tgt});
-
-    //liste_dl_trs.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "transcription": responseData.transcription_mic, "langue": responseData.lang_src_mic});
-    //liste_dl_trs.push({"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "speaker2", "transcription": responseData.transcription_intern, "langue": responseData.lang_src_intern});
-
-    //liste_dl_trd.push({"debut": responseData.debut_mic, "fin": responseData.fin_mic, "source": "speaker1", "traduction": responseData.translation_mic, "langue": lang_tgt});
-    //liste_dl_trd.push({"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "speaker2", "traduction": responseData.translation_intern, "langue": lang_tgt});
+        url = URL.createObjectURL(combinedBlob);
+    
+        let intern_audio = document.getElementById(idRefAudioIntern);
+    
+        console.log('id_ref_audio_intern', idRefAudioIntern);
+        console.log('intern_audio', intern_audio);
+        if (intern_audio == null){
+          console.log('inner html child: ', childIntern.innerHTML);
+        }
+    
+        intern_audio.src = url;
+      });
+    }
 
   }
+  else {
+    //console.log("Transcription interne vide");
 
-  /*concatenateBlobs(listeBlobs).then(combinedBlob => {
-    console.log('combinedBlob', combinedBlob);
-    
-    url = URL.createObjectURL(combinedBlob);
+    if (responseData.eos_intern && iterationAddedInternElement && last_intern > -1){
+      let lastInternRow = rows[last_intern];
 
-    let audio = document.getElementById(id_ref_audio);
+      console.log('InnerHtml: ', lastInternRow.innerHTML);
+      
+      lastInternRow.remove();
 
-    console.log('id_ref_audio', id_ref_audio);
-    console.log('audio', audio);
+      if (last_intern < last_mic){
+        last_mic = last_mic - 1;
+      }
 
-    audio.src = url;
-  });*/
+      if (lastIndexIntern < lastIndexMic){
+        lastIndexMic = lastIndexMic - 1;
+      }
 
-  concatenateBlobs(mic_listeBlobs).then(combinedBlob => {
-    console.log('mic_combinedBlob', combinedBlob);
+      lastIndex = lastIndex - 1;
 
-    url = URL.createObjectURL(combinedBlob);
+      // on enleve l'élément
+      console.log('Liste: ', listeDlOutput);
+      console.log('listeDlOutput elem à supprimer: ', listeDlOutput[lastIndexIntern]);
+      let elem = listeDlOutput.splice(lastIndexIntern, 1);
+      console.log('verif elimination: ', elem != listeDlOutput[lastIndexIntern]);
+      console.log('Liste après suppression: ', listeDlOutput);
 
-    let mic_audio = document.getElementById(idRefAudioMic);
+      lastIndexIntern = -1;
 
-    console.log('id_ref_audio_mic', idRefAudioMic);
-    console.log('mic_audio', mic_audio);
-
-    mic_audio.src = url;
-  });
-
-  concatenateBlobs(intern_listeBlobs).then(combinedBlob => {
-    console.log('intern_combinedBlob', combinedBlob);
-
-    url = URL.createObjectURL(combinedBlob);
-
-    let intern_audio = document.getElementById(idRefAudioIntern);
-
-    console.log('id_ref_audio_intern', idRefAudioIntern);
-    console.log('intern_audio', intern_audio);
-
-    intern_audio.src = url;
-  });
-
+      last_intern = -1;
+    }
+  }
 
   // mise à jour du previousEos de mic
   if(responseData.eos_mic){
     previousEos_mic = true;
-    console.log('eo_mic true:', responseData);
+    iterationAddedMicElement = false;
+    //console.log('eo_mic true:', responseData);
   }
   else{
     previousEos_mic = false;
-    console.log('eos_mic false:', responseData);
+    //console.log('eos_mic false:', responseData);
   }
 
   // mise à jour du previousEos de l'audio interne
   if(responseData.eos_intern){
     previousEos_intern = true;
-    console.log('eos_inter true:', responseData);
+    iterationAddedInternElement = false;
+    //console.log('eos_inter true:', responseData);
   }
   else{
     previousEos_intern = false;
-    console.log('eos_inter false:', responseData);
+    //console.log('eos_inter false:', responseData);
   }
-
+  console.log('Sortie update num: ', id_ref);
   id_ref += 1;
 
-  console.log('previousEos_mic', previousEos_mic);
-  console.log('id_ref', id_ref);
+  //console.log('previousEos_mic', previousEos_mic);
+  //console.log('id_ref', id_ref);
 }
 
 function langTag(l){
@@ -593,60 +659,60 @@ function typeTag(l){
 
 function play_audio(id_ref, tmp_deb, tmp_fin, type){
   
-  console.log('type:', type);
+  //console.log('type:', type);
 
-  console.log('On rentre dans la fonction play');
+  //console.log('On rentre dans la fonction play');
   
   let id_ref_svg = "bouton_" + type + "_" + id_ref;
 
   let svgElement = document.getElementById(id_ref_svg);
   svgElement.classList.add('change-color');
 
-  console.log('timestamp_deb:', tmp_deb);
-  console.log('timestamp_fin:', tmp_fin);
+  //console.log('timestamp_deb:', tmp_deb);
+  //console.log('timestamp_fin:', tmp_fin);
   
   let id_ref_audio = "audio_" + type + "_" + id_ref;
   let audio = document.getElementById(id_ref_audio);
 
-  console.log('audio:', audio);
+  //console.log('audio:', audio);
 
   let deb = tmp_deb * 1000;
   let fin = tmp_fin * 1000;
   let delta = fin - deb;
 
-  console.log('timestamp debut en ms:', deb);
-  console.log('timestamp fin en ms:', fin);
-  console.log('delta (fin - debut) en ms:', delta);
+  //console.log('timestamp debut en ms:', deb);
+  //console.log('timestamp fin en ms:', fin);
+  //console.log('delta (fin - debut) en ms:', delta);
   
-  console.log('currentTime de l\'audio avant modification', audio.currentTime);
+  //console.log('currentTime de l\'audio avant modification', audio.currentTime);
   audio.currentTime = tmp_deb;
-  console.log('currentTime de l\'audio après avoir set currenTime à timestamp début', audio.currentTime);
+  //console.log('currentTime de l\'audio après avoir set currenTime à timestamp début', audio.currentTime);
 
   if(!recordEnCours){
-    console.log('enregistrement terminé ! on joue le segment audio !');
+    //console.log('enregistrement terminé ! on joue le segment audio !');
     
     let duration = audio.duration;
-    console.log('durée de l\'audio:', duration);
+    //console.log('durée de l\'audio:', duration);
 
     if(duration < tmp_deb){
-      console.log('duration < deb; impossible de jouer l\'audio');
+      //console.log('duration < deb; impossible de jouer l\'audio');
     }
     else{
-      console.log('duration > deb; possibilité de jouer l\'audio');
+      //console.log('duration > deb; possibilité de jouer l\'audio');
       audio.currentTime = tmp_deb;
       
       if(duration < tmp_fin){
-        console.log('duration < fin; impossible de jouer l\'audio');
+        //console.log('duration < fin; impossible de jouer l\'audio');
       }
       else{
-        console.log('duration > fin; possibilité de jouer l\'audio');
+        //console.log('duration > fin; possibilité de jouer l\'audio');
         audio.play();
 
         setTimeout(function() {
 
           audio.pause();
           svgElement.classList.remove('change-color');
-          console.log('On a pausé l\'audio, le currentTime est : ', audio.currentTime);
+          //console.log('On a pausé l\'audio, le currentTime est : ', audio.currentTime);
           
         }, delta);
       }
@@ -654,7 +720,7 @@ function play_audio(id_ref, tmp_deb, tmp_fin, type){
   }
 
   else{
-    console.log('enregistrement en cours ! arrêtez l\'enregistrement pour jouer le segment audio');
+    //console.log('enregistrement en cours ! arrêtez l\'enregistrement pour jouer le segment audio');
   }
 
 }
@@ -782,7 +848,7 @@ function afficherTable(){
     //let txt_trs = "[" + elem_trd['debut'].toFixed(2) + ":" + elem_trs['fin'].toFixed(2) + "] " + elem_trs['langue'] + " " + elem_trs['source'] + ": " + elem_trs['transcription'] +"\n";
     //let txt_trd = "[" + elem_trd['debut'].toFixed(2) + ":" + elem_trs['fin'].toFixed(2) + "] " + elem_trs['langue'] + " " + elem_trs['source'] + ": " + elem_trs['traduction'] +"\n";
 
-    let txt = "[" + elem['debut'].toFixed(2) + ":" + elem['fin'].toFixed(2) + "] " + elem['source'] + " <" +  elem['langue']  + "> " + elem['transcription'] + " <" + elem['langueTgt'] + "> " + elem['tranduction'] + "\n";
+    let txt = "[" + elem['debut'].toFixed(2) + ":" + elem['fin'].toFixed(2) + "] " + elem['source'] + " <" +  elem['langueSrc']  + "> " + elem['transcription'] + " <" + elem['langueTgt'] + "> " + elem['traduction'] + "\n";
 
     //liste_trs.push(txt_trs);
     //liste_trd.push(txt_trd);
