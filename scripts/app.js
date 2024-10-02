@@ -12,6 +12,21 @@ document.getElementById("transcript_pr").style.backgroundColor = 'LightGrey';
 document.getElementById("translate_fr").style.backgroundColor = 'LightBlue';
 const audioConstraintEditor = document.getElementById("audioConstraintEditor");
 
+// values du port
+let adrs = "ws://" + document.getElementById('IP').value + ":" + document.getElementById('PORT').value;
+console.log('adresse ip serv: ', adrs);
+
+document.getElementById('IP').addEventListener("input", () => {
+  adrs = "ws://" + document.getElementById('IP').value + ":" + document.getElementById('PORT').value;
+  //console.log('changement adrs, nv adresse ip serv: ', adrs);
+});
+
+document.getElementById('PORT').addEventListener("input", () => {
+  adrs = "ws://" + document.getElementById('IP').value + ":" + document.getElementById('PORT').value;
+  //console.log('changement port, nv adresse ip serv: ', adrs);
+});
+
+
 // listes qui contiennent l'ensemble des informations pour le téléchargement sous forme de fichiers
 let liste_dl_trs = [];
 let liste_dl_trd = [];
@@ -228,7 +243,7 @@ async function startRecording() {
   };*/
 
   // Open WebSocket connection
-  websocket = new WebSocket('ws://127.0.0.1:8765');
+  websocket = new WebSocket(adrs);
   websocket.onopen = (event) => { console.log('CLIENT connection opened.'); };
   websocket.onclose = (event) => { console.log('CLIENT connection closed.'); };
   websocket.onmessage = (event) => { 
@@ -371,9 +386,21 @@ function updateResults(responseData){
 
     let idRefBoutonMic = "bouton_mic_" + id_ref;
     let idRefAudioMic = "audio_mic_" + id_ref;
-    let idSvgTrdMic = "svg_trad_mic_" + id_ref;
+    //let idSvgTrdMic = "svg_trad_mic_" + id_ref;
 
-    let svgBaliseTrsMic = "<audio id=" + idRefAudioMic + " type=\"audio/wav\"></audio><svg id =\"" + idRefBoutonMic + "\" class =\"svg\" onclick=\"play_audio(" + id_ref + "," + responseData.debut_mic + "," + responseData.fin_mic + ", 'mic')\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(responseData.lang_src_mic);
+    let svg_class;
+    let onclick;
+
+    if (responseData.eos_mic){
+      svg_class = "svg";
+      onclick = "play_audio(" + id_ref + "," + responseData.debut_mic + "," + responseData.fin_mic + ", 'mic')";
+    }
+    else{
+      svg_class = "svg-unplayable"
+      onclick = null;
+    }
+
+    let svgBaliseTrsMic = "<audio id=" + idRefAudioMic + " type=\"audio/wav\"></audio><svg id =\"" + idRefBoutonMic + "\" class =\"" + svg_class +"\" onclick=\"" + onclick + "\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(responseData.lang_src_mic);
     //console.log(svgBaliseTrsMic);
 
     let texte = document.createElement("div");
@@ -383,7 +410,7 @@ function updateResults(responseData){
     cellTrsMic.innerHTML = svgBaliseTrsMic;
     cellTrsMic.appendChild(texte);
 
-    let baliseTrdMic = "<svg id =\"" + idSvgTrdMic + "\" class =\"svg\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(lang_tgt);
+    let baliseTrdMic = langTag(lang_tgt);
     cellTrdMic.innerHTML = baliseTrdMic;
 
     let texte_trad = document.createElement("div");
@@ -395,6 +422,7 @@ function updateResults(responseData){
       let lastRow = rows[0];
 
       if (previousEos_mic || last_mic == -1){
+        previousEos_mic = false;
         conteneur.insertBefore(childMic, lastRow);
 
         iterationAddedMicElement = true;
@@ -483,8 +511,16 @@ function updateResults(responseData){
     }
   }
   
+  console.log('id_ref :', id_ref);
+  console.log('previousEosInter: ', previousEos_intern);
+  console.log('currEosIntern: ', responseData.eos_intern);
+  console.log('lastIntern: ', last_intern);
+  console.log('currentTrs: ', responseData.transcription_intern);
+
   if (responseData.transcription_intern != ""){
     //console.log("Transcription interne non vide");
+
+    console.log('Trs int non vide');
     
     let childIntern = document.createElement("div");
     childIntern.className = "row";
@@ -502,9 +538,21 @@ function updateResults(responseData){
 
     let idRefBoutonIntern = "bouton_intern_" + id_ref;
     let idRefAudioIntern = "audio_intern_" + id_ref;
-    let idSvgTrdIntern = "svg_trad_intern_" + id_ref;
+    //let idSvgTrdIntern = "svg_trad_intern_" + id_ref;
 
-    let svgBaliseTrsIntern = "<audio id=" + idRefAudioIntern + " type=\"audio/wav\"></audio><svg id =\"" + idRefBoutonIntern + "\" class =\"svg\" onclick=\"play_audio(" + id_ref + "," + responseData.debut_intern + "," + responseData.fin_intern + ", 'intern')\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(responseData.lang_src_intern);
+    let svg_class;
+    let onclick;
+
+    if (responseData.eos_intern){
+      svg_class = "svg";
+      onclick = "play_audio(" + id_ref + "," + responseData.debut_intern + "," + responseData.fin_intern + ", 'intern')";
+    }
+    else{
+      svg_class = "svg-unplayable";
+      onclick = null;
+    }
+
+    let svgBaliseTrsIntern = "<audio id=" + idRefAudioIntern + " type=\"audio/wav\"></audio><svg id =\"" + idRefBoutonIntern + "\" class =\"" + svg_class + "\" onclick=\"" + onclick + "\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(responseData.lang_src_intern);
     //console.log(svgBaliseTrsIntern);
 
     texte = document.createElement("div");
@@ -513,8 +561,8 @@ function updateResults(responseData){
 
     cellTrsIntern.innerHTML = svgBaliseTrsIntern;
     cellTrsIntern.appendChild(texte);
-  
-    let baliseTrdIntern = "<svg id =\"" + idSvgTrdIntern + "\" class =\"svg\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" + langTag(lang_tgt);
+
+    let baliseTrdIntern = langTag(lang_tgt);
     cellTrdIntern.innerHTML = baliseTrdIntern;
 
     texte_trad = document.createElement("div");
@@ -526,6 +574,8 @@ function updateResults(responseData){
       let lastRow = rows[0];
 
       if (previousEos_intern || last_intern == -1){
+        previousEos_intern = false;
+        console.log('On ajoute une nouvelle trs');
         conteneur.insertBefore(childIntern, lastRow);
 
         iterationAddedInternElement = true;
@@ -541,6 +591,7 @@ function updateResults(responseData){
         listeDlOutput.push({"debut": responseData.debut_intern, "fin": responseData.fin_intern, "source": "speaker2", "transcription": responseData.transcription_intern, "langueSrc": responseData.lang_src_intern, "traduction": responseData.translation_intern, "langueTgt": lang_tgt});
       }
       else{
+        console.log('On modifie une précédente trs');
         let lastInternRow = rows[last_intern];
         lastInternRow.innerHTML = childIntern.innerHTML;
 
@@ -548,6 +599,7 @@ function updateResults(responseData){
       }
     }
     else{
+      console.log('On ajoute la première trs');
       conteneur.appendChild(childIntern);
 
       iterationAddedInternElement = true;
@@ -568,10 +620,11 @@ function updateResults(responseData){
     
         let intern_audio = document.getElementById(idRefAudioIntern);
     
-        console.log('id_ref_audio_intern', idRefAudioIntern);
-        console.log('intern_audio', intern_audio);
+        //console.log('id_ref_audio_intern', idRefAudioIntern);
+        //console.log('intern_audio', intern_audio);
         if (intern_audio == null){
-          console.log('inner html child: ', childIntern.innerHTML);
+          //console.log('inner html child: ', childIntern.innerHTML);
+          console.log('Intern audio null !: ', intern_audio);
         }
     
         intern_audio.src = url;
@@ -580,12 +633,13 @@ function updateResults(responseData){
 
   }
   else {
-    //console.log("Transcription interne vide");
+    console.log("Trs int vide");
 
     if (responseData.eos_intern && iterationAddedInternElement && last_intern > -1){
+      console.log('On remove une trs précédente');
       let lastInternRow = rows[last_intern];
 
-      console.log('InnerHtml: ', lastInternRow.innerHTML);
+      //console.log('InnerHtml: ', lastInternRow.innerHTML);
       
       lastInternRow.remove();
 
@@ -600,11 +654,11 @@ function updateResults(responseData){
       lastIndex = lastIndex - 1;
 
       // on enleve l'élément
-      console.log('Liste: ', listeDlOutput);
-      console.log('listeDlOutput elem à supprimer: ', listeDlOutput[lastIndexIntern]);
+      //console.log('Liste: ', listeDlOutput);
+      //console.log('listeDlOutput elem à supprimer: ', listeDlOutput[lastIndexIntern]);
       let elem = listeDlOutput.splice(lastIndexIntern, 1);
-      console.log('verif elimination: ', elem != listeDlOutput[lastIndexIntern]);
-      console.log('Liste après suppression: ', listeDlOutput);
+      //console.log('verif elimination: ', elem != listeDlOutput[lastIndexIntern]);
+      //console.log('Liste après suppression: ', listeDlOutput);
 
       lastIndexIntern = -1;
 
@@ -612,8 +666,17 @@ function updateResults(responseData){
     }
   }
 
+  if (responseData.eos_mic){
+    previousEos_mic = true;
+    iterationAddedMicElement = false;
+  }
+  if (responseData.eos_intern){
+    previousEos_intern = true;
+    iterationAddedInternElement = false;
+  }
+
   // mise à jour du previousEos de mic
-  if(responseData.eos_mic){
+  /*if(responseData.eos_mic){
     previousEos_mic = true;
     iterationAddedMicElement = false;
     //console.log('eo_mic true:', responseData);
@@ -632,8 +695,8 @@ function updateResults(responseData){
   else{
     previousEos_intern = false;
     //console.log('eos_inter false:', responseData);
-  }
-  console.log('Sortie update num: ', id_ref);
+  }*/
+  //console.log('Sortie update num: ', id_ref);
   id_ref += 1;
 
   //console.log('previousEos_mic', previousEos_mic);
