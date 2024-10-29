@@ -176,8 +176,12 @@ async def handle_connection(websocket, path):
             ### translate ###
             tic = time.time()
 
-            translation_mic = translate(transcription_mic, lang_tgt) if eos_mic else ''
-            translation_intern = translate(transcription_intern, lang_tgt) if eos_intern else ''
+            longueur_transcription_mic = len(transcription_mic.split(' '))
+            longueur_transcription_intern = len(transcription_intern.split(' '))
+
+            # si transcription vide on ne traduit pas
+            translation_mic = translate(transcription_mic, lang_tgt) if (longueur_transcription_mic > 3) or (eos_mic) else ''
+            translation_intern = translate(transcription_intern, lang_tgt) if (longueur_transcription_intern > 3) or (eos_intern) else ''
             
             time_translate = time.time() - tic
             
@@ -220,6 +224,10 @@ async def handle_connection(websocket, path):
             logging.info('MSG BIS: langSrcMic={}, langSrcIntern={}'.format(
                 lang_src_mic,
                 lang_src_intern))
+
+            logging.info('MSG TRD: trd_inter={}, trd_mic={}'.format(
+                translation_intern,
+                translation_mic))
 
             response_dict = {'transcription_intern': transcription_intern, 'translation_intern': translation_intern, 'transcription_mic': transcription_mic, 'translation_mic':translation_mic, 'eos_intern':eos_intern, 'eos_mic': eos_mic, 'lang_src_intern': lang_src_intern, 'lang_src_mic': lang_src_mic, 'debut_intern': debut_transcription_intern, 'fin_intern': fin_transcription_intern, 'debut_mic': debut_transcription_mic, 'fin_mic': fin_transcription_mic}
             

@@ -365,6 +365,18 @@ function updateResults(responseData){
   //console.log('Entree update num: ', id_ref);
   //console.log('responseData: ', responseData);
 
+  console.log('responseData:', responseData);
+
+  if(responseData.eos_intern == false){
+    console.log('trs interne not completed, trs: ', responseData.transcription_intern);
+    console.log('trs interne not completed, trd: ', responseData.translation_intern);
+  }
+
+  if(responseData.eos_mic == false){
+    console.log('trs mic not completed, trs: ', responseData.transcription_mic);
+    console.log('trs mic not completed, trd: ', responseData.translation_mic);
+  }
+
   let conteneur = document.getElementById('tableResults');
 
   let rows = conteneur.getElementsByClassName("row");

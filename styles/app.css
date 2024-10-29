@@ -131,6 +131,13 @@ intern::before {
   border-radius: 10px;
 }
 
+.checkbox-hidden{
+  opacity: 0; /* Rendu invisible mais cliquable */
+  position: absolute; /* Enlève l'espace pris par l'élément */
+  /*position: absolute;
+  top: -100px;*/
+}
+
 /*input[type=checkbox] {
    position: absolute;
    top: -100px;
@@ -227,7 +234,7 @@ input[type=checkbox]:checked ~ aside {
   /*table-layout: fixed;
   height: 50%;*/
   /*height: 30%;*/
-  height: 80%;
+  height: 75%;
 }
 .row {
 display: flex;
