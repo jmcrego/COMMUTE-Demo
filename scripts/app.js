@@ -12,6 +12,8 @@ document.getElementById("transcript_pr").style.backgroundColor = 'LightGrey';
 document.getElementById("translate_fr").style.backgroundColor = 'LightBlue';
 const audioConstraintEditor = document.getElementById("audioConstraintEditor");
 
+console.log('On ouvre le démonstrateur');
+
 // values du port
 let adrs = "ws://" + document.getElementById('IP').value + ":" + document.getElementById('PORT').value;
 console.log('adresse ip serv: ', adrs);
@@ -76,18 +78,30 @@ let iterationAddedMicElement = false;
 let iterationAddedInternElement = false;
 
 // On récupère les 2 devices que nous allons utiliser pour enregistrer la voix/l'audio interne
-navigator.mediaDevices
+(async () => {   
+  await navigator.mediaDevices.getUserMedia({audio: true});
+  navigator.mediaDevices
 			.enumerateDevices()
 			.then((devices) => {
+        console.log('Devices', devices);
 				devices.forEach((device) => {
 					if(device.kind == "audioinput" && myMicrophoneDeviceId == null){
 						myMicrophoneDeviceId = device;
+            console.log('Print1');
+            console.log('Device1', device);
 					}
-					else if(device.kind == "audioinput"){
+					else if(device.kind == "audioinput" && myInternDeviceId == null){
 						myInternDeviceId = device;
+            console.log('Print2');
+            console.log('Device2', device);
 					}
+          else if(device.kind == "audioinput"){
+            console.log('Devices déjà full', device);
+          }
 				})
 			})
+
+})();
 
 // valeur qui détermine si on télécharge l'audio concaténé ou séparé en 2 flux audio distincts
 let separationAudio = document.getElementById('audioSeparation').checked;
